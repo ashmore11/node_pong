@@ -25,6 +25,18 @@ class window.App
 
     Main : =>
 
+        socket = io.connect "http://scott.local:8080"
+
+        socket.on "connect", ->
+            console.log 'Connected, Frontend'
+
+            socket.emit "adduser", prompt "What's your name?"
+
+            socket.on "updateusers", ( data ) ->
+                $.each data, ( key, value ) ->
+                    console.log 'username: ' + key
+                    $( '#userDiv' ).append key + ' has joined the game! <br/>'
+
         @canvas = document.getElementById( 'PongStage' )
         @stage  = new Stage @canvas, true
 
@@ -48,18 +60,6 @@ class window.App
         # Ticker
         Ticker.setFPS 30
         Ticker.addListener @stage
-
-        socket = io.connect "http://scott.local:8080"
-
-        socket.on "connect", ->
-            console.log 'Connected, Frontend'
-
-            socket.emit "adduser", prompt "What's your name?"
-
-            socket.on "updateusers", ( data ) ->
-                $.each data, ( key, value ) ->
-                    console.log 'username: ' + key
-                    $( '#userDiv' ).append key + ' has joined the game! <br/>'
 
 
     handleFileLoad : ( e ) =>
