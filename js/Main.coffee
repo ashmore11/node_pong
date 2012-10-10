@@ -1,91 +1,84 @@
 class window.App
 
+    canvas      = null
     stage       = null
-    manifest    = null
-    cpuSpeed    = 8
-    xSpeed      = 10
-    ySpeed      = 10
+    images      = null
+    xSpeed      = 12
+    ySpeed      = 12
     totalLoaded = 0
     tkr         = new Object
     TitleView   = new Container()
 
-    console.log 'hello!'
-
-    # document.ontouchmove = ( e ) ->
-    #     e.preventDefault()
 
     constructor : ->
 
-        @stage       = {}
-        @manifest    = {}
-        @cpuSpeed    = {}
-        @xSpeed      = {}
-        @ySpeed      = {}
-        @totalLoaded = {}
-        @TitleView   = new Container()
-        @tkr         = new Object
+        @TitleView = new Container()
+        @tkr       = new Object
 
         @Main()
 
 
+    document.ontouchmove = ( e ) ->
+
+        e.preventDefault()
+
+
     Main : =>
-        # Link canvas
+
         @canvas = document.getElementById( 'PongStage' )
-        @stage  = new Stage @canvas
+        @stage  = new Stage @canvas, true
 
-        @stage.mouseEventsEnabled = true
+        # Touch.enable @stage, false
 
-        @manifest = [
-            { src:"img/bg.png",       id:"bg" },
-            { src:"img/main.png",     id:"main" },
-            { src:"img/startB.png",   id:"startB" },
-            { src:"img/paddle.png",   id:"cpu" },
-            { src:"img/paddle.png",   id:"player" },
-            { src:"img/ball.png",     id:"ball" },
-            { src:"img/win.png",      id:"win" },
-            { src:"img/lose.png",     id:"lose" },
+        @images = [ 
+            { src:"img/bg.png",           id:"bg" },
+            { src:"img/main.png",         id:"main" },
+            { src:"img/startB.png",       id:"startB" },
+            { src:"img/paddle.png",       id:"player_2" },
+            { src:"img/paddle.png",       id:"player_1" },
+            { src:"img/ball.png",         id:"ball" },
+            { src:"img/player_1_win.png", id:"win" },
+            { src:"img/player_2_win.png", id:"lose" },
         ]
 
         preloader = new PreloadJS()
-        preloader.onProgress = @handleProgress
-        preloader.onComplete = @handleComplete
         preloader.onFileLoad = @handleFileLoad
-        preloader.loadManifest @manifest
+        preloader.loadManifest @images
 
         # Ticker
         Ticker.setFPS 30
         Ticker.addListener @stage
 
-        # document.getElementById( 'PongStage' ).ontouchstart = -> console.log 'Touch Down PongStage'
-        # document.getElementById( 'PongStage' ).ontouchend   = -> console.log 'Touch Up PongStage'
-        # document.getElementById( 'PongStage' ).ontouchmove  = -> console.log 'Touch Drag PongStage'
+        socket = io.connect "http://scott.local:8080"
+
+        socket.on "connect", ->
+            console.log 'Connected, Frontend'
+
+            socket.emit "adduser", prompt "What's your name?"
+
+            socket.on "updateusers", ( data ) ->
+                $.each data, ( key, value ) ->
+                    console.log 'username: ' + key
+                    $( '#userDiv' ).append key + ' has joined the game! <br/>'
 
 
-    handleProgress : ( event ) =>
-        # Gets the percentage  using event.loaded
-
-
-    handleComplete : ( event ) =>
-        # triggered when loading is complete
-
-
-    handleFileLoad : ( event ) =>
+    handleFileLoad : ( e ) =>
         # triggered when individual file comlpletes loading
-        switch event.type
+        switch e.type
             when PreloadJS.IMAGE
                 #image loaded
                 img        = new Image()
-                img.src    = event.src
+                img.src    = e.src
                 img.onload = @handleLoadComplete
-                window[ event.id ] = new Bitmap( img )
+                window[ e.id ] = new Bitmap( img )
                 @handleLoadComplete()
 
 
-    handleLoadComplete : ( event ) =>
+    handleLoadComplete : =>
 
         totalLoaded++
-        if @manifest.length == totalLoaded
-            @addTitleView()
+        if @images.length is totalLoaded then @addTitleView()
+
 
     addTitleView : =>
 
@@ -98,82 +91,64 @@ class window.App
         @stage.update()
 
         # Button Listeners
-        startB.onPress   = @tweenTitleView
+        startB.onPress = @tweenTitleView
 
 
     tweenTitleView : =>
-        # Start Game
+        # Remove title screen
         Tween.get( @TitleView ).to( { y : -320 }, 300 ).call @addGameView
 
 
     addGameView : =>
+
+        $( '#userDiv' ).hide()
+
         # Destroy Menu screen
         @stage.removeChild @TitleView
         @TitleView = null
 
         # Add Game View
-        player.x = 2
-        player.y = 160 - 37.5
-        cpu.x    = 480 - 25
-        cpu.y    = 160 - 37.5
-        ball.x   = 240 - 15
-        ball.y   = 160 - 15
+        player_1.x = 2
+        player_1.y = 160 - 37.5
+        player_2.x = 480 - 25
+        player_2.y = 160 - 37.5
+        ball.x     = 240 - 15
+        ball.y     = 160 - 15
 
         # Score
-        @playerScore   = new Text '0', 'bold 20px Arial', '#A3FF24'
-        @playerScore.x = 211
-        @playerScore.y = 20
+        @player_1_score   = new Text '0', 'bold 20px Arial', '#A3FF24'
+        @player_1_score.x = 211
+        @player_1_score.y = 20
 
-        @cpuScore   = new Text '0', 'bold 20px Arial', '#A3FF24'
-        @cpuScore.x = 262
-        @cpuScore.y = 20
+        @player_2_score   = new Text '0', 'bold 20px Arial', '#A3FF24'
+        @player_2_score.x = 262
+        @player_2_score.y = 20
 
-        @stage.addChild @playerScore, @cpuScore, player, cpu, ball
+        @stage.addChild @player_1_score, @player_2_score, player_1, player_2, ball
         @stage.update()
 
         # Start Listener
         bg.onPress = @startGame
 
 
-    startGame : =>
+    startGame : ( e ) =>
 
-        bg.onPress = null
-
+        bg.onPress  = null
         isMouseDown = false
 
-        # # Touch Events
-        # document.ontouchstart = ->
-        #     isMouseDown = true
+        document.addEventListener 'touchmove', touchFunction = ( e ) =>
 
-        # document.ontouchend = ->
-        #     isMouseDown = false
+            index = 0
 
-        # document.ontouchmove = ( e ) =>
-        #     console.log 'first event', e.layerY
-        #     if isMouseDown
-        #         @movePaddle( e )
+            for touch in e.touches
 
-        # @stage.ontouchstart = -> console.log 'Touch Down stage'
-        # @stage.ontouchend   = -> console.log 'Touch Up stage'
-        # @stage.ontouchmove  = -> console.log 'Touch Drag stage'
+                if touch.pageX < $( '#PongStage' ).width() / 2
+                    @movePaddle_1( touch )
+                
+                if touch.pageX > $( '#PongStage' ).width() / 2
+                    @movePaddle_2( touch )
 
-        # Mouse Events
-        @stage.onMouseDown = -> 
-            isMouseDown = true
-            console.log 'mouse down'
-
-        @stage.onMouseUp = -> 
-            isMouseDown = false
-            console.log 'mouse up'
-
-        @stage.onMouseMove = ( e ) =>
-            if isMouseDown
-                @movePaddle( e )
-                console.log 'mouse drag'
-
-        # @stage.onMouseDown  = -> console.log 'Mouse Down stage'
-        # @stage.onMouseUp    = -> console.log 'Mouse Up stage'
-        # @stage.onMouseMove  = -> console.log 'Mouse Drag stage'
+                index++
 
         Ticker.addListener tkr, false
         tkr.tick = @update
@@ -182,17 +157,21 @@ class window.App
         Tween.get( win ).to { y : -115 }, 300
 
 
-    movePaddle : ( e ) =>
+    movePaddle_1 : ( touch ) =>
 
-        player.y = e.stageY - 40
+        player_1.y = touch.pageY - 40
+
+    movePaddle_2 : ( touch ) =>
+
+        player_2.y = touch.pageY - 40
 
 
     reset : =>
 
-        ball.x   = 240 - 15
-        ball.y   = 160 - 15
-        player.y = 160 - 37.5
-        cpu.y    = 160 - 37.5
+        ball.x     = 240 - 15
+        ball.y     = 160 - 15
+        player_1.y = 160 - 37.5
+        player_2.y = 160 - 37.5
 
         @stage.onMouseMove = null
         Ticker.removeListener tkr
@@ -200,18 +179,19 @@ class window.App
 
 
     resetGame : ->
-        @stage.removeChild @playerScore, @cpuScore
+
+        @stage.removeChild @player_1_score, @player_2_score
 
         # Score
-        @playerScore   = new Text '0', 'bold 20px Arial', '#A3FF24'
-        @playerScore.x = 211
-        @playerScore.y = 20
+        @player_1_score   = new Text '0', 'bold 20px Arial', '#A3FF24'
+        @player_1_score.x = 211
+        @player_1_score.y = 20
 
-        @cpuScore   = new Text '0', 'bold 20px Arial', '#A3FF24'
-        @cpuScore.x = 262
-        @cpuScore.y = 20
+        @player_2_score   = new Text '0', 'bold 20px Arial', '#A3FF24'
+        @player_2_score.x = 262
+        @player_2_score.y = 20
 
-        @stage.addChild @playerScore, @cpuScore
+        @stage.addChild @player_1_score, @player_2_score
         @stage.update()
 
         # Start Listener
@@ -224,7 +204,7 @@ class window.App
         @stage.onMouseMove = null
         bg.onPress         = @resetGame()
 
-        if e == 'win'
+        if e is 'win'
             win.x = 140
             win.y = -90
 
@@ -244,12 +224,6 @@ class window.App
         ball.x = ball.x + xSpeed
         ball.y = ball.y + ySpeed
 
-        # Cpu movement
-        if cpu.y + 32 < ball.y - 14
-            cpu.y = cpu.y + cpuSpeed
-        else if cpu.y + 32 > ball.y + 14
-            cpu.y = cpu.y - cpuSpeed
-
         # Wall collision up
         if ball.y < 0
             ySpeed = -ySpeed
@@ -258,38 +232,37 @@ class window.App
         if ball.y + 30 > 320
             ySpeed = -ySpeed
 
-        # Cpu score
-        if ball.x < 0
-            xSpeed = -xSpeed
-            @cpuScore.text = parseInt @cpuScore.text + 1
-            @reset()
-
-        # Player score
+        # Player 1 score
         if ball.x + 30 > 480
             xSpeed = -xSpeed
-            @playerScore.text = parseInt @playerScore.text + 1
+            @player_1_score.text = parseInt @player_1_score.text + 1
             @reset()
 
-        # Cpu collision
-        if ball.x + 30 > cpu.x and ball.x + 30 < cpu.x + 22 and ball.y >= cpu.y and ball.y < cpu.y + 75
+        # Player 2 score
+        if ball.x < 0
+            xSpeed = -xSpeed
+            @player_2_score.text = parseInt @player_2_score.text + 1
+            @reset()
+
+        # Player 1 collision
+        if ball.x <= player_1.x + 22 and ball.x > player_1.x and ball.y >= player_1.y and ball.y < player_1.y + 75
             xSpeed *= -1
 
-        # PLayer collision
-        if ball.x <= player.x + 22 and ball.x > player.x and ball.y >= player.y and ball.y < player.y + 75
+        # Player 2 collision
+        if ball.x + 30 > player_2.x and ball.x + 30 < player_2.x + 22 and ball.y >= player_2.y and ball.y < player_2.y + 75
             xSpeed *= -1
 
         # Stop paddle leaving canvas
-        if player.y >= 249
-            player.y = 249
+        if player_1.y >= 249
+            player_1.y = 249
+        else if player_2.y >= 249
+            player_2.y = 249
 
-        # Check for win
-        if @playerScore.text == 5
+        # Check for player 1 win
+        if @player_1_score.text is 5
             @alert 'win'
 
-        # Check for game over
-        if @cpuScore.text == 5
+        # Check for player 2 win
+        if @player_2_score.text is 5
             @alert 'lose'
-
-        #console.log 'cpu-score: ' + @cpuScore.text, 'player-score: ' + @playerScore.text
-        #console.log 'x-position: ' + ball.x, 'y-position: ' + ball.y
 

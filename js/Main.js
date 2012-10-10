@@ -3,25 +3,23 @@
   var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
   window.App = (function() {
-    var TitleView, cpuSpeed, manifest, stage, tkr, totalLoaded, xSpeed, ySpeed;
+    var TitleView, canvas, images, stage, tkr, totalLoaded, xSpeed, ySpeed;
+
+    canvas = null;
 
     stage = null;
 
-    manifest = null;
+    images = null;
 
-    cpuSpeed = 8;
+    xSpeed = 12;
 
-    xSpeed = 10;
-
-    ySpeed = 10;
+    ySpeed = 12;
 
     totalLoaded = 0;
 
     tkr = new Object;
 
     TitleView = new Container();
-
-    console.log('hello!');
 
     function App() {
       this.update = __bind(this.update, this);
@@ -30,7 +28,9 @@
 
       this.reset = __bind(this.reset, this);
 
-      this.movePaddle = __bind(this.movePaddle, this);
+      this.movePaddle_2 = __bind(this.movePaddle_2, this);
+
+      this.movePaddle_1 = __bind(this.movePaddle_1, this);
 
       this.startGame = __bind(this.startGame, this);
 
@@ -44,28 +44,21 @@
 
       this.handleFileLoad = __bind(this.handleFileLoad, this);
 
-      this.handleComplete = __bind(this.handleComplete, this);
-
-      this.handleProgress = __bind(this.handleProgress, this);
-
       this.Main = __bind(this.Main, this);
-      this.stage = {};
-      this.manifest = {};
-      this.cpuSpeed = {};
-      this.xSpeed = {};
-      this.ySpeed = {};
-      this.totalLoaded = {};
       this.TitleView = new Container();
       this.tkr = new Object;
       this.Main();
     }
 
+    document.ontouchmove = function(e) {
+      return e.preventDefault();
+    };
+
     App.prototype.Main = function() {
-      var preloader;
+      var preloader, socket;
       this.canvas = document.getElementById('PongStage');
-      this.stage = new Stage(this.canvas);
-      this.stage.mouseEventsEnabled = true;
-      this.manifest = [
+      this.stage = new Stage(this.canvas, true);
+      this.images = [
         {
           src: "img/bg.png",
           id: "bg"
@@ -77,49 +70,54 @@
           id: "startB"
         }, {
           src: "img/paddle.png",
-          id: "cpu"
+          id: "player_2"
         }, {
           src: "img/paddle.png",
-          id: "player"
+          id: "player_1"
         }, {
           src: "img/ball.png",
           id: "ball"
         }, {
-          src: "img/win.png",
+          src: "img/player_1_win.png",
           id: "win"
         }, {
-          src: "img/lose.png",
+          src: "img/player_2_win.png",
           id: "lose"
         }
       ];
       preloader = new PreloadJS();
-      preloader.onProgress = this.handleProgress;
-      preloader.onComplete = this.handleComplete;
       preloader.onFileLoad = this.handleFileLoad;
-      preloader.loadManifest(this.manifest);
+      preloader.loadManifest(this.images);
       Ticker.setFPS(30);
-      return Ticker.addListener(this.stage);
+      Ticker.addListener(this.stage);
+      socket = io.connect("http://scott.local:8080");
+      return socket.on("connect", function() {
+        console.log('Connected, Frontend');
+        socket.emit("adduser", prompt("What's your name?"));
+        return socket.on("updateusers", function(data) {
+          return $.each(data, function(key, value) {
+            console.log('username: ' + key);
+            return $('#userDiv').append(key + ' has joined the game! <br/>');
+          });
+        });
+      });
     };
 
-    App.prototype.handleProgress = function(event) {};
-
-    App.prototype.handleComplete = function(event) {};
-
-    App.prototype.handleFileLoad = function(event) {
+    App.prototype.handleFileLoad = function(e) {
       var img;
-      switch (event.type) {
+      switch (e.type) {
         case PreloadJS.IMAGE:
           img = new Image();
-          img.src = event.src;
+          img.src = e.src;
           img.onload = this.handleLoadComplete;
-          window[event.id] = new Bitmap(img);
+          window[e.id] = new Bitmap(img);
           return this.handleLoadComplete();
       }
     };
 
-    App.prototype.handleLoadComplete = function(event) {
+    App.prototype.handleLoadComplete = function() {
       totalLoaded++;
-      if (this.manifest.length === totalLoaded) {
+      if (this.images.length === totalLoaded) {
         return this.addTitleView();
       }
     };
@@ -141,44 +139,48 @@
     };
 
     App.prototype.addGameView = function() {
+      $('#userDiv').hide();
       this.stage.removeChild(this.TitleView);
       this.TitleView = null;
-      player.x = 2;
-      player.y = 160 - 37.5;
-      cpu.x = 480 - 25;
-      cpu.y = 160 - 37.5;
+      player_1.x = 2;
+      player_1.y = 160 - 37.5;
+      player_2.x = 480 - 25;
+      player_2.y = 160 - 37.5;
       ball.x = 240 - 15;
       ball.y = 160 - 15;
-      this.playerScore = new Text('0', 'bold 20px Arial', '#A3FF24');
-      this.playerScore.x = 211;
-      this.playerScore.y = 20;
-      this.cpuScore = new Text('0', 'bold 20px Arial', '#A3FF24');
-      this.cpuScore.x = 262;
-      this.cpuScore.y = 20;
-      this.stage.addChild(this.playerScore, this.cpuScore, player, cpu, ball);
+      this.player_1_score = new Text('0', 'bold 20px Arial', '#A3FF24');
+      this.player_1_score.x = 211;
+      this.player_1_score.y = 20;
+      this.player_2_score = new Text('0', 'bold 20px Arial', '#A3FF24');
+      this.player_2_score.x = 262;
+      this.player_2_score.y = 20;
+      this.stage.addChild(this.player_1_score, this.player_2_score, player_1, player_2, ball);
       this.stage.update();
       return bg.onPress = this.startGame;
     };
 
-    App.prototype.startGame = function() {
-      var isMouseDown,
+    App.prototype.startGame = function(e) {
+      var isMouseDown, touchFunction,
         _this = this;
       bg.onPress = null;
       isMouseDown = false;
-      this.stage.onMouseDown = function() {
-        isMouseDown = true;
-        return console.log('mouse down');
-      };
-      this.stage.onMouseUp = function() {
-        isMouseDown = false;
-        return console.log('mouse up');
-      };
-      this.stage.onMouseMove = function(e) {
-        if (isMouseDown) {
-          _this.movePaddle(e);
-          return console.log('mouse drag');
+      document.addEventListener('touchmove', touchFunction = function(e) {
+        var index, touch, _i, _len, _ref, _results;
+        index = 0;
+        _ref = e.touches;
+        _results = [];
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          touch = _ref[_i];
+          if (touch.pageX < $('#PongStage').width() / 2) {
+            _this.movePaddle_1(touch);
+          }
+          if (touch.pageX > $('#PongStage').width() / 2) {
+            _this.movePaddle_2(touch);
+          }
+          _results.push(index++);
         }
-      };
+        return _results;
+      });
       Ticker.addListener(tkr, false);
       tkr.tick = this.update;
       Tween.get(lose).to({
@@ -189,29 +191,33 @@
       }, 300);
     };
 
-    App.prototype.movePaddle = function(e) {
-      return player.y = e.stageY - 40;
+    App.prototype.movePaddle_1 = function(touch) {
+      return player_1.y = touch.pageY - 40;
+    };
+
+    App.prototype.movePaddle_2 = function(touch) {
+      return player_2.y = touch.pageY - 40;
     };
 
     App.prototype.reset = function() {
       ball.x = 240 - 15;
       ball.y = 160 - 15;
-      player.y = 160 - 37.5;
-      cpu.y = 160 - 37.5;
+      player_1.y = 160 - 37.5;
+      player_2.y = 160 - 37.5;
       this.stage.onMouseMove = null;
       Ticker.removeListener(tkr);
       return bg.onPress = this.startGame;
     };
 
     App.prototype.resetGame = function() {
-      this.stage.removeChild(this.playerScore, this.cpuScore);
-      this.playerScore = new Text('0', 'bold 20px Arial', '#A3FF24');
-      this.playerScore.x = 211;
-      this.playerScore.y = 20;
-      this.cpuScore = new Text('0', 'bold 20px Arial', '#A3FF24');
-      this.cpuScore.x = 262;
-      this.cpuScore.y = 20;
-      this.stage.addChild(this.playerScore, this.cpuScore);
+      this.stage.removeChild(this.player_1_score, this.player_2_score);
+      this.player_1_score = new Text('0', 'bold 20px Arial', '#A3FF24');
+      this.player_1_score.x = 211;
+      this.player_1_score.y = 20;
+      this.player_2_score = new Text('0', 'bold 20px Arial', '#A3FF24');
+      this.player_2_score.x = 262;
+      this.player_2_score.y = 20;
+      this.stage.addChild(this.player_1_score, this.player_2_score);
       this.stage.update();
       return bg.onPress = this.startGame;
     };
@@ -240,40 +246,37 @@
     App.prototype.update = function() {
       ball.x = ball.x + xSpeed;
       ball.y = ball.y + ySpeed;
-      if (cpu.y + 32 < ball.y - 14) {
-        cpu.y = cpu.y + cpuSpeed;
-      } else if (cpu.y + 32 > ball.y + 14) {
-        cpu.y = cpu.y - cpuSpeed;
-      }
       if (ball.y < 0) {
         ySpeed = -ySpeed;
       }
       if (ball.y + 30 > 320) {
         ySpeed = -ySpeed;
       }
-      if (ball.x < 0) {
-        xSpeed = -xSpeed;
-        this.cpuScore.text = parseInt(this.cpuScore.text + 1);
-        this.reset();
-      }
       if (ball.x + 30 > 480) {
         xSpeed = -xSpeed;
-        this.playerScore.text = parseInt(this.playerScore.text + 1);
+        this.player_1_score.text = parseInt(this.player_1_score.text + 1);
         this.reset();
       }
-      if (ball.x + 30 > cpu.x && ball.x + 30 < cpu.x + 22 && ball.y >= cpu.y && ball.y < cpu.y + 75) {
+      if (ball.x < 0) {
+        xSpeed = -xSpeed;
+        this.player_2_score.text = parseInt(this.player_2_score.text + 1);
+        this.reset();
+      }
+      if (ball.x <= player_1.x + 22 && ball.x > player_1.x && ball.y >= player_1.y && ball.y < player_1.y + 75) {
         xSpeed *= -1;
       }
-      if (ball.x <= player.x + 22 && ball.x > player.x && ball.y >= player.y && ball.y < player.y + 75) {
+      if (ball.x + 30 > player_2.x && ball.x + 30 < player_2.x + 22 && ball.y >= player_2.y && ball.y < player_2.y + 75) {
         xSpeed *= -1;
       }
-      if (player.y >= 249) {
-        player.y = 249;
+      if (player_1.y >= 249) {
+        player_1.y = 249;
+      } else if (player_2.y >= 249) {
+        player_2.y = 249;
       }
-      if (this.playerScore.text === 5) {
+      if (this.player_1_score.text === 5) {
         this.alert('win');
       }
-      if (this.cpuScore.text === 5) {
+      if (this.player_2_score.text === 5) {
         return this.alert('lose');
       }
     };

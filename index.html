@@ -10,7 +10,7 @@
         <script src="http://code.createjs.com/tweenjs-0.2.0.min.js"></script>
         <script src="http://code.createjs.com/preloadjs-0.1.0.min.js"></script>
         <script src="http://code.createjs.com/movieclip-0.4.1.min.js"></script>
-        <script src="js/HammerJS/hammer.js"></script>
+        <script src="js/socket.io/socket.io.js"></script>
         <script src="js/jquery.min.js"></script>
         <script src="js/Main.js"></script>
         <script>
@@ -18,10 +18,12 @@
                 myApp = new App();
             });
         </script>
-
     </head>
     
     <body>
-        <canvas id="PongStage" width="480" height="320"></canvas>
+        <div id="container">
+            <canvas id="PongStage" width="480" height="320"></canvas>
+            <div id="userDiv"></div>
+        </div>
     </body>
 </html>

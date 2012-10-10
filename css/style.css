@@ -3,6 +3,26 @@
 	margin: 0;
 }
 
+#PongStage {
+	position: absolute;
+	z-index: 1;
+}
+
+#container {
+	position: absolute;
+	width: 480px;
+	height: 320px;
+}
+
+#userDiv {
+	position: absolute;
+	left: 10px; bottom: 10px;
+	font-family: 'Helvetica Neue';
+	font-size: 14px;
+	color: #FFF;
+	z-index: 2;
+}
+
 @media only screen and (device-width: 320px) and (-webkit-min-device-pixel-ratio: 2) {
 
 	body {
@@ -17,6 +37,15 @@
 		position: absolute;
 		width: 100%;
 		height: 100%;
+		z-index: 1;
+	}
+
+	#userDiv {
+		position: absolute;
+		left: 20px; bottom: 20px;
+		font-size: 20px;
+		color: #FFF;
+		z-index: 2;
 	}
 
 }
