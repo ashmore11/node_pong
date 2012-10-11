@@ -8,6 +8,7 @@ class window.App
     totalLoaded = 0
     tkr         = new Object
     TitleView   = new Container()
+    socket      = null
 
 
     constructor : ->
@@ -25,22 +26,30 @@ class window.App
 
     Main : =>
 
-        socket = io.connect "http://scott.local:8080"
+        socket   = io.connect "http://scott.local:8080"
+        user_num = 0
 
-        socket.on "connect", ->
+        socket.on "connect", =>
             console.log 'Connected, Frontend'
 
             socket.emit "adduser", prompt "What's your name?"
 
-            socket.on "updateusers", ( data ) ->
-                $.each data, ( key, value ) ->
+            socket.on "updateusers", ( data ) =>
+                $.each data, ( key, value ) =>
                     console.log 'username: ' + key
-                    $( '#userDiv' ).append key + ' has joined the game! <br/>'
+                    $( '#userDiv' ).append( key + ' has joined the game! <br/>' ).fadeOut 2000
 
-        @canvas = document.getElementById( 'PongStage' )
+                    user_num++
+                    if user_num < 2 
+                        console.log 'Waiting for another player'
+                        # $( '#waitDiv' ).append 'Waiting for another player to join...'
+                    else 
+                        console.log 'Ready to play!'
+                        @tweenTitleView()
+
+
+        @canvas = document.getElementById 'PongStage'
         @stage  = new Stage @canvas, true
-
-        # Touch.enable @stage, false
 
         @images = [ 
             { src:"img/bg.png",           id:"bg" },
@@ -70,7 +79,7 @@ class window.App
                 img        = new Image()
                 img.src    = e.src
                 img.onload = @handleLoadComplete
-                window[ e.id ] = new Bitmap( img )
+                window[ e.id ] = new Bitmap img
                 @handleLoadComplete()
 
 
@@ -86,7 +95,7 @@ class window.App
         startB.y    = 180
         startB.name = 'startB'
 
-        @TitleView.addChild( main, startB )
+        @TitleView.addChild main, startB
         @stage.addChild bg, @TitleView
         @stage.update()
 
@@ -96,12 +105,13 @@ class window.App
 
     tweenTitleView : =>
         # Remove title screen
-        Tween.get( @TitleView ).to( { y : -320 }, 300 ).call @addGameView
+        Tween.get( @TitleView ).to( { y : -320 }, 500 ).call @addGameView
 
 
     addGameView : =>
 
         $( '#userDiv' ).hide()
+        $( '#waitDiv' ).hide()
 
         # Destroy Menu screen
         @stage.removeChild @TitleView
@@ -136,6 +146,11 @@ class window.App
         bg.onPress  = null
         isMouseDown = false
 
+        socket.on "ballmove", ( x, y ) =>
+            ball.x = x
+            ball.y = y
+            console.log 'ball X: ' + ball.x, 'ball Y: ' + ball.y
+
         document.addEventListener 'touchmove', touchFunction = ( e ) =>
 
             index = 0
@@ -159,11 +174,18 @@ class window.App
 
     movePaddle_1 : ( touch ) =>
 
-        player_1.y = touch.pageY - 40
+        socket.emit "paddlemove_1", touch.pageY
+
+        socket.on "move_player_1", ( pageY ) =>
+            player_1.y = pageY - 40
+
 
     movePaddle_2 : ( touch ) =>
 
-        player_2.y = touch.pageY - 40
+        socket.emit "paddlemove_2", touch.pageY
+
+        socket.on "move_player_2", ( pageY ) =>
+            player_2.y = pageY - 40
 
 
     reset : =>
@@ -173,7 +195,6 @@ class window.App
         player_1.y = 160 - 37.5
         player_2.y = 160 - 37.5
 
-        @stage.onMouseMove = null
         Ticker.removeListener tkr
         bg.onPress = @startGame
 
@@ -220,17 +241,6 @@ class window.App
 
 
     update : =>
-        # Ball Movement
-        ball.x = ball.x + xSpeed
-        ball.y = ball.y + ySpeed
-
-        # Wall collision up
-        if ball.y < 0
-            ySpeed = -ySpeed
-
-        # Wall collision down
-        if ball.y + 30 > 320
-            ySpeed = -ySpeed
 
         # Player 1 score
         if ball.x + 30 > 480
@@ -243,14 +253,6 @@ class window.App
             xSpeed = -xSpeed
             @player_2_score.text = parseInt @player_2_score.text + 1
             @reset()
-
-        # Player 1 collision
-        if ball.x <= player_1.x + 22 and ball.x > player_1.x and ball.y >= player_1.y and ball.y < player_1.y + 75
-            xSpeed *= -1
-
-        # Player 2 collision
-        if ball.x + 30 > player_2.x and ball.x + 30 < player_2.x + 22 and ball.y >= player_2.y and ball.y < player_2.y + 75
-            xSpeed *= -1
 
         # Stop paddle leaving canvas
         if player_1.y >= 249

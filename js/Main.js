@@ -3,7 +3,7 @@
   var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
   window.App = (function() {
-    var TitleView, canvas, images, stage, tkr, totalLoaded, xSpeed, ySpeed;
+    var TitleView, canvas, images, socket, stage, tkr, totalLoaded, xSpeed, ySpeed;
 
     canvas = null;
 
@@ -20,6 +20,8 @@
     tkr = new Object;
 
     TitleView = new Container();
+
+    socket = null;
 
     function App() {
       this.update = __bind(this.update, this);
@@ -55,7 +57,27 @@
     };
 
     App.prototype.Main = function() {
-      var preloader, socket;
+      var preloader, user_num,
+        _this = this;
+      socket = io.connect("http://scott.local:8080");
+      user_num = 0;
+      socket.on("connect", function() {
+        console.log('Connected, Frontend');
+        socket.emit("adduser", prompt("What's your name?"));
+        return socket.on("updateusers", function(data) {
+          return $.each(data, function(key, value) {
+            console.log('username: ' + key);
+            $('#userDiv').append(key + ' has joined the game! <br/>').fadeOut(2000);
+            user_num++;
+            if (user_num < 2) {
+              return console.log('Waiting for another player');
+            } else {
+              console.log('Ready to play!');
+              return _this.tweenTitleView();
+            }
+          });
+        });
+      });
       this.canvas = document.getElementById('PongStage');
       this.stage = new Stage(this.canvas, true);
       this.images = [
@@ -89,18 +111,7 @@
       preloader.onFileLoad = this.handleFileLoad;
       preloader.loadManifest(this.images);
       Ticker.setFPS(30);
-      Ticker.addListener(this.stage);
-      socket = io.connect("http://scott.local:8080");
-      return socket.on("connect", function() {
-        console.log('Connected, Frontend');
-        socket.emit("adduser", prompt("What's your name?"));
-        return socket.on("updateusers", function(data) {
-          return $.each(data, function(key, value) {
-            console.log('username: ' + key);
-            return $('#userDiv').append(key + ' has joined the game! <br/>');
-          });
-        });
-      });
+      return Ticker.addListener(this.stage);
     };
 
     App.prototype.handleFileLoad = function(e) {
@@ -135,11 +146,12 @@
     App.prototype.tweenTitleView = function() {
       return Tween.get(this.TitleView).to({
         y: -320
-      }, 300).call(this.addGameView);
+      }, 500).call(this.addGameView);
     };
 
     App.prototype.addGameView = function() {
       $('#userDiv').hide();
+      $('#waitDiv').hide();
       this.stage.removeChild(this.TitleView);
       this.TitleView = null;
       player_1.x = 2;
@@ -164,6 +176,11 @@
         _this = this;
       bg.onPress = null;
       isMouseDown = false;
+      socket.on("ballmove", function(x, y) {
+        ball.x = x;
+        ball.y = y;
+        return console.log('ball X: ' + ball.x, 'ball Y: ' + ball.y);
+      });
       document.addEventListener('touchmove', touchFunction = function(e) {
         var index, touch, _i, _len, _ref, _results;
         index = 0;
@@ -192,11 +209,19 @@
     };
 
     App.prototype.movePaddle_1 = function(touch) {
-      return player_1.y = touch.pageY - 40;
+      var _this = this;
+      socket.emit("paddlemove_1", touch.pageY);
+      return socket.on("move_player_1", function(pageY) {
+        return player_1.y = pageY - 40;
+      });
     };
 
     App.prototype.movePaddle_2 = function(touch) {
-      return player_2.y = touch.pageY - 40;
+      var _this = this;
+      socket.emit("paddlemove_2", touch.pageY);
+      return socket.on("move_player_2", function(pageY) {
+        return player_2.y = pageY - 40;
+      });
     };
 
     App.prototype.reset = function() {
@@ -204,7 +229,6 @@
       ball.y = 160 - 15;
       player_1.y = 160 - 37.5;
       player_2.y = 160 - 37.5;
-      this.stage.onMouseMove = null;
       Ticker.removeListener(tkr);
       return bg.onPress = this.startGame;
     };
@@ -244,14 +268,6 @@
     };
 
     App.prototype.update = function() {
-      ball.x = ball.x + xSpeed;
-      ball.y = ball.y + ySpeed;
-      if (ball.y < 0) {
-        ySpeed = -ySpeed;
-      }
-      if (ball.y + 30 > 320) {
-        ySpeed = -ySpeed;
-      }
       if (ball.x + 30 > 480) {
         xSpeed = -xSpeed;
         this.player_1_score.text = parseInt(this.player_1_score.text + 1);
@@ -261,12 +277,6 @@
         xSpeed = -xSpeed;
         this.player_2_score.text = parseInt(this.player_2_score.text + 1);
         this.reset();
-      }
-      if (ball.x <= player_1.x + 22 && ball.x > player_1.x && ball.y >= player_1.y && ball.y < player_1.y + 75) {
-        xSpeed *= -1;
-      }
-      if (ball.x + 30 > player_2.x && ball.x + 30 < player_2.x + 22 && ball.y >= player_2.y && ball.y < player_2.y + 75) {
-        xSpeed *= -1;
       }
       if (player_1.y >= 249) {
         player_1.y = 249;
