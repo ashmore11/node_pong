@@ -3,7 +3,7 @@
   var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
   window.App = (function() {
-    var TitleView, canvas, images, socket, stage, tkr, totalLoaded, xSpeed, ySpeed;
+    var TitleView, canvas, images, socket, stage, totalLoaded;
 
     canvas = null;
 
@@ -11,24 +11,18 @@
 
     images = null;
 
-    xSpeed = 12;
-
-    ySpeed = 12;
-
     totalLoaded = 0;
-
-    tkr = new Object;
 
     TitleView = new Container();
 
     socket = null;
 
     function App() {
-      this.update = __bind(this.update, this);
+      this.resetGame = __bind(this.resetGame, this);
 
-      this.alert = __bind(this.alert, this);
+      this.playerTwoScore = __bind(this.playerTwoScore, this);
 
-      this.reset = __bind(this.reset, this);
+      this.playerOneScore = __bind(this.playerOneScore, this);
 
       this.movePaddle_2 = __bind(this.movePaddle_2, this);
 
@@ -48,7 +42,6 @@
 
       this.Main = __bind(this.Main, this);
       this.TitleView = new Container();
-      this.tkr = new Object;
       this.Main();
     }
 
@@ -57,45 +50,49 @@
     };
 
     App.prototype.Main = function() {
-      var preloader, user_num,
+      var preloader,
         _this = this;
       socket = io.connect("http://scott.local:8080");
-      user_num = 0;
       socket.on("connect", function() {
-        console.log('Connected, Frontend');
         socket.emit("adduser", prompt("What's your name?"));
         return socket.on("updateusers", function(data) {
           return $.each(data, function(key, value) {
-            console.log('username: ' + key);
-            $('#userDiv').append(key + ' has joined the game! <br/>').fadeOut(2000);
-            user_num++;
-            if (user_num < 2) {
-              return console.log('Waiting for another player');
-            } else {
-              console.log('Ready to play!');
-              return _this.tweenTitleView();
-            }
+            return $('#userDiv').append(key + ' has joined the game! <br/>').fadeOut(2000);
           });
         });
       });
+      socket.on("user_num", function(user_num) {
+        if (user_num < 2) {
+          return console.log('waiting...');
+        } else {
+          console.log('user_num: ' + user_num);
+          return _this.tweenTitleView();
+        }
+      });
+      socket.on("player_1_score", function() {
+        return _this.playerOneScore();
+      });
+      socket.on("player_2_score", function() {
+        return _this.playerTwoScore();
+      });
       this.canvas = document.getElementById('PongStage');
-      this.stage = new Stage(this.canvas, true);
+      this.stage = new Stage(this.canvas);
       this.images = [
         {
-          src: "img/bg.png",
-          id: "bg"
+          src: "img/waiting.gif",
+          id: "wait"
         }, {
           src: "img/main.png",
           id: "main"
         }, {
-          src: "img/startB.png",
-          id: "startB"
-        }, {
-          src: "img/paddle.png",
-          id: "player_2"
+          src: "img/bg.png",
+          id: "bg"
         }, {
           src: "img/paddle.png",
           id: "player_1"
+        }, {
+          src: "img/paddle.png",
+          id: "player_2"
         }, {
           src: "img/ball.png",
           id: "ball"
@@ -110,7 +107,6 @@
       preloader = new PreloadJS();
       preloader.onFileLoad = this.handleFileLoad;
       preloader.loadManifest(this.images);
-      Ticker.setFPS(30);
       return Ticker.addListener(this.stage);
     };
 
@@ -134,13 +130,13 @@
     };
 
     App.prototype.addTitleView = function() {
-      startB.x = 240 - 31.5;
-      startB.y = 180;
-      startB.name = 'startB';
-      this.TitleView.addChild(main, startB);
-      this.stage.addChild(bg, this.TitleView);
-      this.stage.update();
-      return startB.onPress = this.tweenTitleView;
+      wait.x = 100;
+      wait.y = 180;
+      Tween.get(wait).to({
+        y: 130
+      }, 500);
+      this.TitleView.addChild(main, wait);
+      return this.stage.addChild(bg, this.TitleView);
     };
 
     App.prototype.tweenTitleView = function() {
@@ -150,8 +146,7 @@
     };
 
     App.prototype.addGameView = function() {
-      $('#userDiv').hide();
-      $('#waitDiv').hide();
+      var _this = this;
       this.stage.removeChild(this.TitleView);
       this.TitleView = null;
       player_1.x = 2;
@@ -167,21 +162,21 @@
       this.player_2_score.x = 262;
       this.player_2_score.y = 20;
       this.stage.addChild(this.player_1_score, this.player_2_score, player_1, player_2, ball);
-      this.stage.update();
-      return bg.onPress = this.startGame;
+      ball.onPress = function() {
+        return socket.emit("bg_press");
+      };
+      return socket.on("game_started", function() {
+        return _this.startGame();
+      });
     };
 
     App.prototype.startGame = function(e) {
-      var isMouseDown, touchFunction,
-        _this = this;
-      bg.onPress = null;
-      isMouseDown = false;
+      var _this = this;
       socket.on("ballmove", function(x, y) {
         ball.x = x;
-        ball.y = y;
-        return console.log('ball X: ' + ball.x, 'ball Y: ' + ball.y);
+        return ball.y = y;
       });
-      document.addEventListener('touchmove', touchFunction = function(e) {
+      document.addEventListener('touchstart', function(e) {
         var index, touch, _i, _len, _ref, _results;
         index = 0;
         _ref = e.touches;
@@ -198,21 +193,30 @@
         }
         return _results;
       });
-      Ticker.addListener(tkr, false);
-      tkr.tick = this.update;
-      Tween.get(lose).to({
-        y: -115
-      }, 300);
-      return Tween.get(win).to({
-        y: -115
-      }, 300);
+      return document.addEventListener('touchmove', function(e) {
+        var index, touch, _i, _len, _ref, _results;
+        index = 0;
+        _ref = e.touches;
+        _results = [];
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          touch = _ref[_i];
+          if (touch.pageX < $('#PongStage').width() / 2) {
+            _this.movePaddle_1(touch);
+          }
+          if (touch.pageX > $('#PongStage').width() / 2) {
+            _this.movePaddle_2(touch);
+          }
+          _results.push(index++);
+        }
+        return _results;
+      });
     };
 
     App.prototype.movePaddle_1 = function(touch) {
       var _this = this;
       socket.emit("paddlemove_1", touch.pageY);
       return socket.on("move_player_1", function(pageY) {
-        return player_1.y = pageY - 40;
+        return player_1.y = pageY;
       });
     };
 
@@ -220,20 +224,54 @@
       var _this = this;
       socket.emit("paddlemove_2", touch.pageY);
       return socket.on("move_player_2", function(pageY) {
-        return player_2.y = pageY - 40;
+        return player_2.y = pageY;
       });
     };
 
-    App.prototype.reset = function() {
+    App.prototype.playerOneScore = function() {
+      var _this = this;
+      this.player_1_score.text = parseInt(this.player_1_score.text + 1.0);
+      socket.on("reset_game", function() {
+        return ball.onPress = function() {
+          return socket.emit("bg_press");
+        };
+      });
       ball.x = 240 - 15;
       ball.y = 160 - 15;
-      player_1.y = 160 - 37.5;
-      player_2.y = 160 - 37.5;
-      Ticker.removeListener(tkr);
-      return bg.onPress = this.startGame;
+      if (this.player_1_score.text === 3) {
+        win.x = 140;
+        win.y = -90;
+        this.stage.addChild(win);
+        Tween.get(win).to({
+          y: 115
+        }, 300);
+        return this.resetGame();
+      }
+    };
+
+    App.prototype.playerTwoScore = function() {
+      var _this = this;
+      this.player_2_score.text = parseInt(this.player_2_score.text + 1.0);
+      socket.on("reset_game", function() {
+        return ball.onPress = function() {
+          return socket.emit("bg_press");
+        };
+      });
+      ball.x = 240 - 15;
+      ball.y = 160 - 15;
+      if (this.player_2_score.text === 3) {
+        lose.x = 140;
+        lose.y = -90;
+        this.stage.addChild(lose);
+        Tween.get(lose).to({
+          y: 115
+        }, 300);
+        return this.resetGame();
+      }
     };
 
     App.prototype.resetGame = function() {
+      var _this = this;
       this.stage.removeChild(this.player_1_score, this.player_2_score);
       this.player_1_score = new Text('0', 'bold 20px Arial', '#A3FF24');
       this.player_1_score.x = 211;
@@ -242,53 +280,25 @@
       this.player_2_score.x = 262;
       this.player_2_score.y = 20;
       this.stage.addChild(this.player_1_score, this.player_2_score);
-      this.stage.update();
-      return bg.onPress = this.startGame;
-    };
-
-    App.prototype.alert = function(e) {
-      Ticker.removeListener(tkr);
-      this.stage.onMouseMove = null;
-      bg.onPress = this.resetGame();
-      if (e === 'win') {
-        win.x = 140;
-        win.y = -90;
-        this.stage.addChild(win);
+      win.onPress = function() {
+        return socket.emit("remove_win");
+      };
+      socket.on("remove", function() {
         return Tween.get(win).to({
-          y: 115
+          y: -115
         }, 300);
-      } else {
-        lose.x = 140;
-        lose.y = -90;
-        this.stage.addChild(lose);
+      });
+      lose.onPress = function() {
+        return socket.emit("remove_win");
+      };
+      socket.on("remove", function() {
         return Tween.get(lose).to({
-          y: 115
+          y: -115
         }, 300);
-      }
-    };
-
-    App.prototype.update = function() {
-      if (ball.x + 30 > 480) {
-        xSpeed = -xSpeed;
-        this.player_1_score.text = parseInt(this.player_1_score.text + 1);
-        this.reset();
-      }
-      if (ball.x < 0) {
-        xSpeed = -xSpeed;
-        this.player_2_score.text = parseInt(this.player_2_score.text + 1);
-        this.reset();
-      }
-      if (player_1.y >= 249) {
-        player_1.y = 249;
-      } else if (player_2.y >= 249) {
-        player_2.y = 249;
-      }
-      if (this.player_1_score.text === 5) {
-        this.alert('win');
-      }
-      if (this.player_2_score.text === 5) {
-        return this.alert('lose');
-      }
+      });
+      return ball.onPress = function() {
+        return socket.emit("bg_press");
+      };
     };
 
     return App;

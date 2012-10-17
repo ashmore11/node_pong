@@ -3,10 +3,7 @@ class window.App
     canvas      = null
     stage       = null
     images      = null
-    xSpeed      = 12
-    ySpeed      = 12
     totalLoaded = 0
-    tkr         = new Object
     TitleView   = new Container()
     socket      = null
 
@@ -14,8 +11,6 @@ class window.App
     constructor : ->
 
         @TitleView = new Container()
-        @tkr       = new Object
-
         @Main()
 
 
@@ -26,48 +21,45 @@ class window.App
 
     Main : =>
 
-        socket   = io.connect "http://scott.local:8080"
-        user_num = 0
+        socket = io.connect "http://scott.local:8080"
 
-        socket.on "connect", =>
-            console.log 'Connected, Frontend'
-
+        socket.on "connect", () =>
             socket.emit "adduser", prompt "What's your name?"
 
             socket.on "updateusers", ( data ) =>
+
                 $.each data, ( key, value ) =>
-                    console.log 'username: ' + key
                     $( '#userDiv' ).append( key + ' has joined the game! <br/>' ).fadeOut 2000
 
-                    user_num++
-                    if user_num < 2 
-                        console.log 'Waiting for another player'
-                        # $( '#waitDiv' ).append 'Waiting for another player to join...'
-                    else 
-                        console.log 'Ready to play!'
-                        @tweenTitleView()
+        socket.on "user_num", ( user_num ) =>
+            if user_num < 2
+                console.log 'waiting...'
+            else 
+                console.log 'user_num: ' + user_num
+                @tweenTitleView()
 
+        socket.on "player_1_score", () => @playerOneScore()
+        socket.on "player_2_score", () => @playerTwoScore()
 
         @canvas = document.getElementById 'PongStage'
-        @stage  = new Stage @canvas, true
+        @stage  = new Stage @canvas
 
         @images = [ 
-            { src:"img/bg.png",           id:"bg" },
+            { src:"img/waiting.gif",      id:"wait" },
             { src:"img/main.png",         id:"main" },
-            { src:"img/startB.png",       id:"startB" },
-            { src:"img/paddle.png",       id:"player_2" },
+            { src:"img/bg.png",           id:"bg" },
             { src:"img/paddle.png",       id:"player_1" },
+            { src:"img/paddle.png",       id:"player_2" },
             { src:"img/ball.png",         id:"ball" },
             { src:"img/player_1_win.png", id:"win" },
-            { src:"img/player_2_win.png", id:"lose" },
+            { src:"img/player_2_win.png", id:"lose" }
         ]
 
         preloader = new PreloadJS()
         preloader.onFileLoad = @handleFileLoad
         preloader.loadManifest @images
 
-        # Ticker
-        Ticker.setFPS 30
+        # Ticker.setFPS 30
         Ticker.addListener @stage
 
 
@@ -91,33 +83,25 @@ class window.App
 
     addTitleView : =>
 
-        startB.x    = 240 - 31.5
-        startB.y    = 180
-        startB.name = 'startB'
+        wait.x = 100
+        wait.y = 180
 
-        @TitleView.addChild main, startB
+        Tween.get( wait ).to { y : 130 }, 500
+
+        @TitleView.addChild main, wait
         @stage.addChild bg, @TitleView
-        @stage.update()
-
-        # Button Listeners
-        startB.onPress = @tweenTitleView
 
 
     tweenTitleView : =>
-        # Remove title screen
+        
         Tween.get( @TitleView ).to( { y : -320 }, 500 ).call @addGameView
 
 
     addGameView : =>
-
-        $( '#userDiv' ).hide()
-        $( '#waitDiv' ).hide()
-
-        # Destroy Menu screen
+        
         @stage.removeChild @TitleView
         @TitleView = null
 
-        # Add Game View
         player_1.x = 2
         player_1.y = 160 - 37.5
         player_2.x = 480 - 25
@@ -125,7 +109,6 @@ class window.App
         ball.x     = 240 - 15
         ball.y     = 160 - 15
 
-        # Score
         @player_1_score   = new Text '0', 'bold 20px Arial', '#A3FF24'
         @player_1_score.x = 211
         @player_1_score.y = 20
@@ -135,75 +118,95 @@ class window.App
         @player_2_score.y = 20
 
         @stage.addChild @player_1_score, @player_2_score, player_1, player_2, ball
-        @stage.update()
 
-        # Start Listener
-        bg.onPress = @startGame
+        ball.onPress = () => socket.emit "bg_press"
+
+        socket.on "game_started", () => @startGame()
 
 
     startGame : ( e ) =>
 
-        bg.onPress  = null
-        isMouseDown = false
-
-        socket.on "ballmove", ( x, y ) =>
+        socket.on "ballmove", ( x , y ) =>
             ball.x = x
             ball.y = y
-            console.log 'ball X: ' + ball.x, 'ball Y: ' + ball.y
 
-        document.addEventListener 'touchmove', touchFunction = ( e ) =>
+        document.addEventListener 'touchstart', ( e ) =>
 
             index = 0
-
             for touch in e.touches
-
                 if touch.pageX < $( '#PongStage' ).width() / 2
                     @movePaddle_1( touch )
                 
                 if touch.pageX > $( '#PongStage' ).width() / 2
                     @movePaddle_2( touch )
-
                 index++
 
-        Ticker.addListener tkr, false
-        tkr.tick = @update
+        document.addEventListener 'touchmove', ( e ) =>
 
-        Tween.get( lose ).to { y : -115 }, 300
-        Tween.get( win ).to { y : -115 }, 300
+            index = 0
+            for touch in e.touches
+                if touch.pageX < $( '#PongStage' ).width() / 2
+                    @movePaddle_1( touch )
+                
+                if touch.pageX > $( '#PongStage' ).width() / 2
+                    @movePaddle_2( touch )
+                index++
 
 
     movePaddle_1 : ( touch ) =>
-
+        
         socket.emit "paddlemove_1", touch.pageY
-
-        socket.on "move_player_1", ( pageY ) =>
-            player_1.y = pageY - 40
+        socket.on "move_player_1", ( pageY ) => player_1.y = pageY
 
 
     movePaddle_2 : ( touch ) =>
-
+        
         socket.emit "paddlemove_2", touch.pageY
-
-        socket.on "move_player_2", ( pageY ) =>
-            player_2.y = pageY - 40
+        socket.on "move_player_2", ( pageY ) => player_2.y = pageY
 
 
-    reset : =>
+    playerOneScore : () =>
 
-        ball.x     = 240 - 15
-        ball.y     = 160 - 15
-        player_1.y = 160 - 37.5
-        player_2.y = 160 - 37.5
+        @player_1_score.text = parseInt @player_1_score.text + 1.0
 
-        Ticker.removeListener tkr
-        bg.onPress = @startGame
+        socket.on "reset_game", () =>
+            ball.onPress = () => socket.emit "bg_press"
+
+        ball.x = 240 - 15
+        ball.y = 160 - 15
+
+        if @player_1_score.text is 3
+            win.x = 140
+            win.y = -90
+
+            @stage.addChild win
+            Tween.get( win ).to { y : 115 }, 300
+            @resetGame()
+
+        
+    playerTwoScore : () =>
+        
+        @player_2_score.text = parseInt @player_2_score.text + 1.0
+
+        socket.on "reset_game", () =>
+            ball.onPress = () => socket.emit "bg_press"
+
+        ball.x = 240 - 15
+        ball.y = 160 - 15
+
+        if @player_2_score.text is 3
+            lose.x = 140
+            lose.y = -90
+
+            @stage.addChild lose
+            Tween.get( lose ).to { y : 115 }, 300
+            @resetGame()
 
 
-    resetGame : ->
+    resetGame : () =>
 
         @stage.removeChild @player_1_score, @player_2_score
 
-        # Score
         @player_1_score   = new Text '0', 'bold 20px Arial', '#A3FF24'
         @player_1_score.x = 211
         @player_1_score.y = 20
@@ -213,58 +216,21 @@ class window.App
         @player_2_score.y = 20
 
         @stage.addChild @player_1_score, @player_2_score
-        @stage.update()
 
-        # Start Listener
-        bg.onPress = @startGame
+        win.onPress = () =>
+            socket.emit "remove_win"
 
+        socket.on "remove", () =>
+            Tween.get( win ).to { y : -115 }, 300
 
-    alert : ( e ) =>
+        lose.onPress = () =>
+            socket.emit "remove_win"
 
-        Ticker.removeListener tkr
-        @stage.onMouseMove = null
-        bg.onPress         = @resetGame()
+        socket.on "remove", () =>
+            Tween.get( lose ).to { y : -115 }, 300
 
-        if e is 'win'
-            win.x = 140
-            win.y = -90
-
-            @stage.addChild win
-            Tween.get( win ).to { y : 115 }, 300
-
-        else
-            lose.x = 140
-            lose.y = -90
-
-            @stage.addChild lose
-            Tween.get( lose ).to { y : 115 }, 300
+        ball.onPress = () => socket.emit "bg_press"
 
 
-    update : =>
 
-        # Player 1 score
-        if ball.x + 30 > 480
-            xSpeed = -xSpeed
-            @player_1_score.text = parseInt @player_1_score.text + 1
-            @reset()
-
-        # Player 2 score
-        if ball.x < 0
-            xSpeed = -xSpeed
-            @player_2_score.text = parseInt @player_2_score.text + 1
-            @reset()
-
-        # Stop paddle leaving canvas
-        if player_1.y >= 249
-            player_1.y = 249
-        else if player_2.y >= 249
-            player_2.y = 249
-
-        # Check for player 1 win
-        if @player_1_score.text is 5
-            @alert 'win'
-
-        # Check for player 2 win
-        if @player_2_score.text is 5
-            @alert 'lose'
 
