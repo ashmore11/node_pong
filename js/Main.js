@@ -56,16 +56,22 @@
       socket.on("connect", function() {
         socket.emit("adduser", prompt("What's your name?"));
         return socket.on("updateusers", function(data) {
-          return $.each(data, function(key, value) {
-            return $('#userDiv').append(key + ' has joined the game! <br/>').fadeOut(2000);
+          $.each(data, function(value) {
+            $('#userDiv').html('');
+            return $('#userDiv').append(value + ' has joined the game! <br/>');
+          });
+          return socket.on("user_disconnect", function(value) {
+            return $.each(data, function(value) {
+              $('#disconnectDiv').html('');
+              return $('#disconnectDiv').append(value + ' has disconnected...').delay(2000).fadeOut(2000);
+            });
           });
         });
       });
       socket.on("user_num", function(user_num) {
         if (user_num < 2) {
-          return console.log('waiting...');
+          return _this.addTitleView;
         } else {
-          console.log('user_num: ' + user_num);
           return _this.tweenTitleView();
         }
       });
@@ -98,15 +104,16 @@
           id: "ball"
         }, {
           src: "img/player_1_win.png",
-          id: "win"
+          id: "player_1_win"
         }, {
           src: "img/player_2_win.png",
-          id: "lose"
+          id: "player_2_win"
         }
       ];
       preloader = new PreloadJS();
       preloader.onFileLoad = this.handleFileLoad;
       preloader.loadManifest(this.images);
+      Ticker.setFPS(25);
       return Ticker.addListener(this.stage);
     };
 
@@ -147,6 +154,7 @@
 
     App.prototype.addGameView = function() {
       var _this = this;
+      $('#userDiv').delay(500).fadeOut(1500);
       this.stage.removeChild(this.TitleView);
       this.TitleView = null;
       player_1.x = 2;
@@ -161,6 +169,46 @@
       this.player_2_score = new Text('0', 'bold 20px Arial', '#A3FF24');
       this.player_2_score.x = 262;
       this.player_2_score.y = 20;
+      document.addEventListener('touchstart', function(touch) {
+        var _i, _len, _ref, _results;
+        _ref = touch.touches;
+        _results = [];
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          touch = _ref[_i];
+          if (touch.pageX < $('#PongStage').width() / 2) {
+            socket.emit("move_1", touch.pageY);
+          }
+          if (touch.pageX > $('#PongStage').width() / 2) {
+            _results.push(socket.emit("move_2", touch.pageY));
+          } else {
+            _results.push(void 0);
+          }
+        }
+        return _results;
+      });
+      document.addEventListener('touchmove', function(touch) {
+        var _i, _len, _ref, _results;
+        _ref = touch.touches;
+        _results = [];
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          touch = _ref[_i];
+          if (touch.pageX < $('#PongStage').width() / 2) {
+            socket.emit("move_1", touch.pageY);
+          }
+          if (touch.pageX > $('#PongStage').width() / 2) {
+            _results.push(socket.emit("move_2", touch.pageY));
+          } else {
+            _results.push(void 0);
+          }
+        }
+        return _results;
+      });
+      socket.on("paddle_1", function(pageY) {
+        return _this.movePaddle_1(pageY);
+      });
+      socket.on("paddle_2", function(pageY) {
+        return _this.movePaddle_2(pageY);
+      });
       this.stage.addChild(this.player_1_score, this.player_2_score, player_1, player_2, ball);
       ball.onPress = function() {
         return socket.emit("bg_press");
@@ -170,66 +218,40 @@
       });
     };
 
-    App.prototype.startGame = function(e) {
-      var _this = this;
-      socket.on("ballmove", function(x, y) {
+    App.prototype.startGame = function() {
+      return socket.on("ballmove", function(x, y) {
         ball.x = x;
         return ball.y = y;
       });
-      document.addEventListener('touchstart', function(e) {
-        var index, touch, _i, _len, _ref, _results;
-        index = 0;
-        _ref = e.touches;
-        _results = [];
-        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-          touch = _ref[_i];
-          if (touch.pageX < $('#PongStage').width() / 2) {
-            _this.movePaddle_1(touch);
-          }
-          if (touch.pageX > $('#PongStage').width() / 2) {
-            _this.movePaddle_2(touch);
-          }
-          _results.push(index++);
+    };
+
+    App.prototype.movePaddle_1 = function(pageY) {
+      socket.emit("paddlemove_1", pageY);
+      return socket.on("move_player_1", function(yCoord) {
+        player_1.y = yCoord;
+        if (player_1.y >= 245) {
+          player_1.y = 245;
         }
-        return _results;
-      });
-      return document.addEventListener('touchmove', function(e) {
-        var index, touch, _i, _len, _ref, _results;
-        index = 0;
-        _ref = e.touches;
-        _results = [];
-        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-          touch = _ref[_i];
-          if (touch.pageX < $('#PongStage').width() / 2) {
-            _this.movePaddle_1(touch);
-          }
-          if (touch.pageX > $('#PongStage').width() / 2) {
-            _this.movePaddle_2(touch);
-          }
-          _results.push(index++);
+        if (player_1.y <= 0) {
+          return player_1.y = 0;
         }
-        return _results;
       });
     };
 
-    App.prototype.movePaddle_1 = function(touch) {
-      var _this = this;
-      socket.emit("paddlemove_1", touch.pageY);
-      return socket.on("move_player_1", function(pageY) {
-        return player_1.y = pageY;
-      });
-    };
-
-    App.prototype.movePaddle_2 = function(touch) {
-      var _this = this;
-      socket.emit("paddlemove_2", touch.pageY);
-      return socket.on("move_player_2", function(pageY) {
-        return player_2.y = pageY;
+    App.prototype.movePaddle_2 = function(pageY) {
+      socket.emit("paddlemove_2", pageY);
+      return socket.on("move_player_2", function(yCoord) {
+        player_2.y = yCoord;
+        if (player_2.y >= 245) {
+          player_2.y = 245;
+        }
+        if (player_2.y <= 0) {
+          return player_2.y = 0;
+        }
       });
     };
 
     App.prototype.playerOneScore = function() {
-      var _this = this;
       this.player_1_score.text = parseInt(this.player_1_score.text + 1.0);
       socket.on("reset_game", function() {
         return ball.onPress = function() {
@@ -239,10 +261,10 @@
       ball.x = 240 - 15;
       ball.y = 160 - 15;
       if (this.player_1_score.text === 3) {
-        win.x = 140;
-        win.y = -90;
-        this.stage.addChild(win);
-        Tween.get(win).to({
+        player_1_win.x = 140;
+        player_1_win.y = -90;
+        this.stage.addChild(player_1_win);
+        Tween.get(player_1_win).to({
           y: 115
         }, 300);
         return this.resetGame();
@@ -250,7 +272,6 @@
     };
 
     App.prototype.playerTwoScore = function() {
-      var _this = this;
       this.player_2_score.text = parseInt(this.player_2_score.text + 1.0);
       socket.on("reset_game", function() {
         return ball.onPress = function() {
@@ -260,10 +281,10 @@
       ball.x = 240 - 15;
       ball.y = 160 - 15;
       if (this.player_2_score.text === 3) {
-        lose.x = 140;
-        lose.y = -90;
-        this.stage.addChild(lose);
-        Tween.get(lose).to({
+        player_2_win.x = 140;
+        player_2_win.y = -90;
+        this.stage.addChild(player_2_win);
+        Tween.get(player_2_win).to({
           y: 115
         }, 300);
         return this.resetGame();
@@ -271,7 +292,6 @@
     };
 
     App.prototype.resetGame = function() {
-      var _this = this;
       this.stage.removeChild(this.player_1_score, this.player_2_score);
       this.player_1_score = new Text('0', 'bold 20px Arial', '#A3FF24');
       this.player_1_score.x = 211;
@@ -280,19 +300,19 @@
       this.player_2_score.x = 262;
       this.player_2_score.y = 20;
       this.stage.addChild(this.player_1_score, this.player_2_score);
-      win.onPress = function() {
+      player_1_win.onPress = function() {
         return socket.emit("remove_win");
       };
       socket.on("remove", function() {
-        return Tween.get(win).to({
+        return Tween.get(player_1_win).to({
           y: -115
         }, 300);
       });
-      lose.onPress = function() {
+      player_2_win.onPress = function() {
         return socket.emit("remove_win");
       };
       socket.on("remove", function() {
-        return Tween.get(lose).to({
+        return Tween.get(player_2_win).to({
           y: -115
         }, 300);
       });

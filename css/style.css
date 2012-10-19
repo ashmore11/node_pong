@@ -16,29 +16,31 @@
 
 #userDiv {
 	position: absolute;
-	bottom: 30px; left: 50%;
-	margin-left: -100px;
-	width: 200px;
+	bottom: 15px; left: 50%;
+	margin-left: -160px;
+	width: 320px;
 	text-align: center;
-	font-family: 'Helvetica Neue';
-	font-size: 14px;
-	color: #FFF;
+	font-family: 'Arial';
+	font-size: 16px;
+	font-weight: bold;
+	color: #A3FF24;
 	z-index: 2;
 }
 
-#waitDiv {
+#disconnectDiv {
 	position: absolute;
-	bottom: 10px; left: 50%;
-	margin-left: -150px;
-	width: 300px;
+	bottom: 15px; left: 50%;
+	margin-left: -160px;
+	width: 320px;
 	text-align: center;
-	font-family: 'Helvetica Neue';
-	font-size: 14px;
-	color: #FFF;
+	font-family: 'Arial';
+	font-size: 16px;
+	font-weight: bold;
+	color: #A3FF24;
 	z-index: 2;
 }
 
-@media only screen and (device-width: 320px) and (-webkit-min-device-pixel-ratio: 2) {
+@media only screen and ( device-width: 320px ) and ( -webkit-min-device-pixel-ratio: 2 ) {
 
 	body {
 		position: absolute;
@@ -57,9 +59,27 @@
 
 	#userDiv {
 		position: absolute;
-		left: 20px; bottom: 20px;
+		left: 50%; bottom: 30px;
+		margin-left: -160px;
+		width: 320px;
+		text-align: center;
+		font-family: 'Arial';
 		font-size: 20px;
-		color: #FFF;
+		font-weight: bold;
+		color: #A3FF24;
+		z-index: 2;
+	}
+
+	#disconnectDiv {
+		position: absolute;
+		bottom: 30px; left: 50%;
+		margin-left: -160px;
+		width: 320px;
+		text-align: center;
+		font-family: 'Arial';
+		font-size: 20px;
+		font-weight: bold;
+		color: #A3FF24;
 		z-index: 2;
 	}
 
