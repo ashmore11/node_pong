@@ -6,9 +6,7 @@ app.use express.static( __dirname + '/public' )
 
 io = require('socket.io').listen app.listen( port )
 
-# io.set('log level', 2)
-
-usernames = {}
+io.set('log level', 2)
 
 # Routing
 app.get "/", ( req, res ) -> res.sendfile __dirname + "/index.html"
@@ -30,20 +28,46 @@ xSpeed   = 5
 ySpeed   = 5
 user_num = 0
 timer    = null
+users    = []
 
-io.sockets.on "connection", ( socket ) ->
-	socket.on "adduser", ( username ) ->
-		socket.username       = username
-		usernames[ username ] = username
+io.sockets.on 'connection', ( socket ) ->
 
-		io.sockets.emit "updateusers", usernames
+	socket.on 'adduser', ( user ) ->
 
-		user_num++
-		io.sockets.emit "user_num", user_num
+		user_num += 1
 
-	socket.on "bg_press", ->
+		io.sockets.emit 'user_num', user_num
+
+		socket.set 'username', user, ->
+
+			users[ user ] = user
+
+			io.sockets.emit 'updateusers', user
+
+
+	socket.on 'disconnect', ->
+
+		user_num -= 1
+
+		io.sockets.emit 'user_num', user_num
+
+		socket.get 'username', ( err, user ) ->
+
+			delete users[ user ]
+
+			io.sockets.emit 'user_disconnect', user
+
+
+	socket.on 'bg_press', ->
+
 		start_game()
-		io.sockets.emit "game_started"
+
+		io.sockets.emit 'game_started'
+
+
+	socket.on 'remove_win', ->
+
+		io.sockets.emit 'remove'
 
 
 	############# P A D D L E #############
@@ -62,13 +86,6 @@ io.sockets.on "connection", ( socket ) ->
 		io.sockets.emit "move_player_2", yCoord
 
 	############# P A D D L E #############
-
-
-	socket.on "remove_win", -> io.sockets.emit "remove"
-
-	socket.on "disconnect", ->
-		delete usernames[ socket.username ]
-		io.sockets.emit "user_disconnect"
 
 
 start_game = ->

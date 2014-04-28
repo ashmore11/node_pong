@@ -4,6 +4,10 @@
     __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
   App = (function() {
+    App.prototype.window = null;
+
+    App.prototype.socket = null;
+
     App.prototype.canvas = null;
 
     App.prototype.stage = null;
@@ -12,15 +16,16 @@
 
     App.prototype.totalLoaded = 0;
 
-    App.prototype.TitleView = null;
-
-    App.prototype.socket = null;
+    App.prototype.title_view = null;
 
     function App() {
-      this.addGameView = __bind(this.addGameView, this);
-      this.handleLoadComplete = __bind(this.handleLoadComplete, this);
-      this.handleFileLoad = __bind(this.handleFileLoad, this);
-      this.TitleView = new Container();
+      this.player_two_score = __bind(this.player_two_score, this);
+      this.player_one_score = __bind(this.player_one_score, this);
+      this.tween_title_view = __bind(this.tween_title_view, this);
+      this.handle_load_complete = __bind(this.handle_load_complete, this);
+      this.handle_file_load = __bind(this.handle_file_load, this);
+      this.window = $(window);
+      this.title_view = new Container();
       this.Main();
       $(window).on('touchmove', function(e) {
         return e.preventDefault();
@@ -33,37 +38,41 @@
       this.socket.on("connect", (function(_this) {
         return function() {
           _this.socket.emit("adduser", prompt("What's your name?"));
-          return _this.socket.on("updateusers", function(data) {
-            $.each(data, function(value) {
-              $('#userDiv').html('');
-              return $('#userDiv').append(value + ' has joined the game! <br/>');
+          _this.socket.on("updateusers", function(user) {
+            var html;
+            html = user + ' has joined the game!';
+            return $('#userDiv').html(html).fadeIn(1000).delay(1000).fadeOut(1000, function() {
+              return $(_this).html('');
             });
-            return _this.socket.on("user_disconnect", function(value) {
-              return $.each(data, function(value) {
-                $('#disconnectDiv').html('');
-                return $('#disconnectDiv').append(value + ' has disconnected...').delay(2000).fadeOut(2000);
-              });
-            });
+          });
+          return _this.socket.on("user_disconnect", function(user) {
+            var html;
+            html = user + ' has disconnected...';
+            return $('#disconnectDiv').html(html).fadeIn(1000).delay(1000).fadeOut(1000, (function(_this) {
+              return function() {
+                return $(_this).html('');
+              };
+            })(this));
           });
         };
       })(this));
       this.socket.on("user_num", (function(_this) {
         return function(user_num) {
-          if (user_num < 2) {
-            return _this.addTitleView;
-          } else {
-            return _this.tweenTitleView();
-          }
+          return _this.delay(1000, function() {
+            if (user_num === 2) {
+              return _this.tween_title_view();
+            }
+          });
         };
       })(this));
       this.socket.on("player_1_score", (function(_this) {
         return function() {
-          return _this.playerOneScore();
+          return _this.player_one_score();
         };
       })(this));
       this.socket.on("player_2_score", (function(_this) {
         return function() {
-          return _this.playerTwoScore();
+          return _this.player_two_score();
         };
       })(this));
       this.canvas = document.getElementById('PongStage');
@@ -72,88 +81,85 @@
       this.stage.canvas.height = $(window).height();
       this.images = [
         {
-          src: "images/waiting.gif",
-          id: "wait"
+          id: "wait",
+          src: "images/waiting.gif"
         }, {
-          src: "images/main.png",
-          id: "main"
+          id: "player_1",
+          src: "images/paddle.png"
         }, {
-          src: "images/bg.png",
-          id: "bg"
+          id: "player_2",
+          src: "images/paddle.png"
         }, {
-          src: "images/paddle.png",
-          id: "player_1"
+          id: "ball",
+          src: "images/ball.png"
         }, {
-          src: "images/paddle.png",
-          id: "player_2"
+          id: "player_1_win",
+          src: "images/player_1_win.png"
         }, {
-          src: "images/ball.png",
-          id: "ball"
-        }, {
-          src: "images/player_1_win.png",
-          id: "player_1_win"
-        }, {
-          src: "images/player_2_win.png",
-          id: "player_2_win"
+          id: "player_2_win",
+          src: "images/player_2_win.png"
         }
       ];
       preloader = new PreloadJS();
-      preloader.onFileLoad = this.handleFileLoad;
+      preloader.onFileLoad = this.handle_file_load;
       preloader.loadManifest(this.images);
-      Ticker.setFPS(25);
+      Ticker.setFPS(60);
       return Ticker.addListener(this.stage);
     };
 
-    App.prototype.handleFileLoad = function(e) {
+    App.prototype.handle_file_load = function(e) {
       var img;
       switch (e.type) {
         case PreloadJS.IMAGE:
           img = new Image();
           img.src = e.src;
-          img.onload = this.handleLoadComplete;
+          img.onload = this.handle_load_complete();
           window[e.id] = new Bitmap(img);
-          return this.handleLoadComplete();
+          return this.handle_load_complete();
       }
     };
 
-    App.prototype.handleLoadComplete = function() {
+    App.prototype.handle_load_complete = function() {
       this.totalLoaded++;
       if (this.images.length === this.totalLoaded) {
-        return this.addTitleView();
+        return this.add_title_view();
       }
     };
 
-    App.prototype.addTitleView = function() {
+    App.prototype.add_title_view = function() {
+      this.stage.addChild(this.TitleView);
+      console.log('add_title_view', this.title_view);
       wait.x = 100;
       wait.y = 180;
-      Tween.get(wait).to({
+      this.title_view.addChild(wait);
+      return Tween.get(wait).to({
         y: 130
       }, 500);
-      this.TitleView.addChild(main, wait);
-      return this.stage.addChild(bg, this.TitleView);
     };
 
-    App.prototype.tweenTitleView = function() {
-      return Tween.get(this.TitleView).to({
+    App.prototype.tween_title_view = function() {
+      console.log('tween_title_view');
+      return Tween.get(this.title_view).to({
         y: -320
-      }, 500).call(this.addGameView);
+      }, 500).call(this.add_game_view());
     };
 
-    App.prototype.addGameView = function() {
+    App.prototype.add_game_view = function() {
+      console.log('add_game_view');
       $('#userDiv').delay(500).fadeOut(1500);
-      this.stage.removeChild(this.TitleView);
-      this.TitleView = null;
+      this.stage.removeChild(this.title_view);
+      this.title_view = null;
       player_1.x = 2;
-      player_1.y = 160 - 37.5;
-      player_2.x = 480 - 25;
-      player_2.y = 160 - 37.5;
-      ball.x = 240 - 15;
-      ball.y = 160 - 15;
-      this.player_1_score = new Text('0', 'bold 20px Arial', '#A3FF24');
-      this.player_1_score.x = 211;
+      player_1.y = (this.window.height() / 2) - 37.5;
+      player_2.x = this.window.width() - 25;
+      player_2.y = (this.window.height() / 2) - 37.5;
+      ball.x = (this.window.width() / 2) - 15;
+      ball.y = (this.window.height() / 2) - 15;
+      this.player_1_score = new Text('0', 'bold 20px Arial', '#FFF');
+      this.player_1_score.x = (this.window.width() / 2) - 30;
       this.player_1_score.y = 20;
-      this.player_2_score = new Text('0', 'bold 20px Arial', '#A3FF24');
-      this.player_2_score.x = 262;
+      this.player_2_score = new Text('0', 'bold 20px Arial', '#FFF');
+      this.player_2_score.x = (this.window.width() / 2) + 15;
       this.player_2_score.y = 20;
       document.addEventListener('touchstart', (function(_this) {
         return function(touch) {
@@ -195,12 +201,12 @@
       })(this));
       this.socket.on("paddle_1", (function(_this) {
         return function(pageY) {
-          return _this.movePaddle_1(pageY);
+          return _this.move_paddle_1(pageY);
         };
       })(this));
       this.socket.on("paddle_2", (function(_this) {
         return function(pageY) {
-          return _this.movePaddle_2(pageY);
+          return _this.move_paddle_2(pageY);
         };
       })(this));
       this.stage.addChild(this.player_1_score, this.player_2_score, player_1, player_2, ball);
@@ -211,24 +217,26 @@
       })(this);
       return this.socket.on("game_started", (function(_this) {
         return function() {
-          return _this.startGame();
+          return _this.start_game();
         };
       })(this));
     };
 
-    App.prototype.startGame = function() {
+    App.prototype.start_game = function() {
       return this.socket.on("ballmove", function(x, y) {
         ball.x = x;
         return ball.y = y;
       });
     };
 
-    App.prototype.movePaddle_1 = function(pageY) {
+    App.prototype.move_paddle_1 = function(pageY) {
       this.socket.emit("paddlemove_1", pageY);
       return this.socket.on("move_player_1", function(yCoord) {
+        var height;
         player_1.y = yCoord;
-        if (player_1.y >= 245) {
-          player_1.y = 245;
+        height = $(window).height() - 75;
+        if (player_1.y >= height) {
+          player_1.y = height;
         }
         if (player_1.y <= 0) {
           return player_1.y = 0;
@@ -236,12 +244,14 @@
       });
     };
 
-    App.prototype.movePaddle_2 = function(pageY) {
+    App.prototype.move_paddle_2 = function(pageY) {
       this.socket.emit("paddlemove_2", pageY);
       return this.socket.on("move_player_2", function(yCoord) {
+        var height;
         player_2.y = yCoord;
-        if (player_2.y >= 245) {
-          player_2.y = 245;
+        height = $(window).height() - 75;
+        if (player_2.y >= height) {
+          player_2.y = height;
         }
         if (player_2.y <= 0) {
           return player_2.y = 0;
@@ -249,7 +259,7 @@
       });
     };
 
-    App.prototype.playerOneScore = function() {
+    App.prototype.player_one_score = function() {
       this.player_1_score.text = parseInt(this.player_1_score.text + 1.0);
       this.socket.on("reset_game", (function(_this) {
         return function() {
@@ -267,11 +277,11 @@
         Tween.get(player_1_win).to({
           y: 115
         }, 300);
-        return this.resetGame();
+        return this.reset_game();
       }
     };
 
-    App.prototype.playerTwoScore = function() {
+    App.prototype.player_two_score = function() {
       this.player_2_score.text = parseInt(this.player_2_score.text + 1.0);
       this.socket.on("reset_game", (function(_this) {
         return function() {
@@ -289,17 +299,17 @@
         Tween.get(player_2_win).to({
           y: 115
         }, 300);
-        return this.resetGame();
+        return this.reset_game();
       }
     };
 
-    App.prototype.resetGame = function() {
+    App.prototype.reset_game = function() {
       this.stage.removeChild(this.player_1_score, this.player_2_score);
-      this.player_1_score = new Text('0', 'bold 20px Arial', '#A3FF24');
-      this.player_1_score.x = 211;
+      this.player_1_score = new Text('0', 'bold 20px Arial', '#FFF');
+      this.player_1_score.x = ($(window).width() / 2) - 30;
       this.player_1_score.y = 20;
-      this.player_2_score = new Text('0', 'bold 20px Arial', '#A3FF24');
-      this.player_2_score.x = 262;
+      this.player_2_score = new Text('0', 'bold 20px Arial', '#FFF');
+      this.player_2_score.x = ($(window).width() / 2) + 15;
       this.player_2_score.y = 20;
       this.stage.addChild(this.player_1_score, this.player_2_score);
       player_1_win.onPress = (function(_this) {
@@ -327,6 +337,10 @@
           return _this.socket.emit("bg_press");
         };
       })(this);
+    };
+
+    App.prototype.delay = function(time, fn, args) {
+      return setTimeout(fn, time, args);
     };
 
     return App;
