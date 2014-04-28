@@ -127,14 +127,14 @@
     };
 
     App.prototype.add_title_view = function() {
-      this.stage.addChild(this.TitleView);
-      console.log('add_title_view', this.title_view);
+      console.log('add_title_view');
       wait.x = 100;
       wait.y = 180;
-      this.title_view.addChild(wait);
-      return Tween.get(wait).to({
+      Tween.get(wait).to({
         y: 130
       }, 500);
+      this.title_view.addChild(wait);
+      return this.stage.addChild(this.TitleView);
     };
 
     App.prototype.tween_title_view = function() {

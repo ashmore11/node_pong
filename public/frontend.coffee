@@ -102,16 +102,15 @@ class App
 
 	add_title_view: ->
 
-		@stage.addChild @TitleView
-
-		console.log 'add_title_view', @title_view
+		console.log 'add_title_view'
 
 		wait.x = 100
 		wait.y = 180
 
-		@title_view.addChild wait
-
 		Tween.get( wait ).to { y : 130 }, 500
+
+		@title_view.addChild wait
+		@stage.addChild @TitleView
 
 
 	tween_title_view: =>
