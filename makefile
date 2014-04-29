@@ -1,3 +1,6 @@
+setup:
+	npm install
+
 watch.client:
 	coffee -wc -o public coffee/client.coffee
 
