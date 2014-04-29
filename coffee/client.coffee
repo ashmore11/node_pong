@@ -181,7 +181,7 @@ class App
 			for touch in event.touches
 
 				percent = ( touch.pageY / $(window).height() ) * 100
-			
+
 				if touch.pageX < $( '#PongStage' ).width() / 2 then @socket.emit 'move_1', percent
 				if touch.pageX > $( '#PongStage' ).width() / 2 then @socket.emit 'move_2', percent
 
@@ -206,15 +206,15 @@ class App
 
 
 	move_paddle_1: ( percent ) ->
-
-		page_y = ( percent / 100 ) * $(window).height()
 		
 		# Send & receive the touch coordinates to/from the server
-		@socket.emit 'paddlemove_1', page_y
+		@socket.emit 'paddlemove_1', percent
 
-		@socket.on 'move_player_1', ( yCoord ) ->
+		@socket.on 'move_player_1', ( percent ) ->
 
-			player_1.y = yCoord
+			page_y = ( percent / 100 ) * $(window).height()
+
+			player_1.y = page_y - 40
 
 			height = $(window).height() - 75
 
@@ -224,15 +224,15 @@ class App
 
 
 	move_paddle_2: ( percent ) ->
-
-		page_y = ( percent / 100 ) * $(window).height()
 		
 		# Send & receive the touch coordinates to/from the server
-		@socket.emit 'paddlemove_2', page_y
+		@socket.emit 'paddlemove_2', percent
 
-		@socket.on 'move_player_2', ( yCoord ) ->
+		@socket.on 'move_player_2', ( percent ) ->
 
-			player_2.y = yCoord
+			page_y = ( percent / 100 ) * $(window).height()
+
+			player_2.y = page_y - 40
 
 			height = $(window).height() - 75
 

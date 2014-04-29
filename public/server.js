@@ -73,17 +73,13 @@
     socket.on('move_2', function(percent) {
       return io.sockets.emit('paddle_2', percent);
     });
-    socket.on('paddlemove_1', function(page_y) {
-      var yCoord;
-      yCoord = page_y - 40;
-      player_1.y = yCoord;
-      return io.sockets.emit('move_player_1', yCoord);
+    socket.on('paddlemove_1', function(percent) {
+      player_1.y = percent;
+      return io.sockets.emit('move_player_1', percent);
     });
-    return socket.on('paddlemove_2', function(page_y) {
-      var yCoord;
-      yCoord = page_y - 40;
-      player_2.y = yCoord;
-      return io.sockets.emit('move_player_2', yCoord);
+    return socket.on('paddlemove_2', function(percent) {
+      player_2.y = percent;
+      return io.sockets.emit('move_player_2', percent);
     });
   });
 

@@ -255,12 +255,11 @@
     };
 
     App.prototype.move_paddle_1 = function(percent) {
-      var page_y;
-      page_y = (percent / 100) * $(window).height();
-      this.socket.emit('paddlemove_1', page_y);
-      return this.socket.on('move_player_1', function(yCoord) {
-        var height;
-        player_1.y = yCoord;
+      this.socket.emit('paddlemove_1', percent);
+      return this.socket.on('move_player_1', function(percent) {
+        var height, page_y;
+        page_y = (percent / 100) * $(window).height();
+        player_1.y = page_y - 40;
         height = $(window).height() - 75;
         if (player_1.y >= height) {
           player_1.y = height;
@@ -272,12 +271,11 @@
     };
 
     App.prototype.move_paddle_2 = function(percent) {
-      var page_y;
-      page_y = (percent / 100) * $(window).height();
-      this.socket.emit('paddlemove_2', page_y);
-      return this.socket.on('move_player_2', function(yCoord) {
-        var height;
-        player_2.y = yCoord;
+      this.socket.emit('paddlemove_2', percent);
+      return this.socket.on('move_player_2', function(percent) {
+        var height, page_y;
+        page_y = (percent / 100) * $(window).height();
+        player_2.y = page_y - 40;
         height = $(window).height() - 75;
         if (player_2.y >= height) {
           player_2.y = height;

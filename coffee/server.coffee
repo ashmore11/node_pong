@@ -72,18 +72,28 @@ io.sockets.on 'connection', ( socket ) ->
 
 	############# P A D D L E #############
 
-	socket.on 'move_1', ( percent ) -> io.sockets.emit 'paddle_1', percent
-	socket.on 'move_2', ( percent ) -> io.sockets.emit 'paddle_2', percent
+	socket.on 'move_1', ( percent ) ->
 
-	socket.on 'paddlemove_1', ( page_y ) ->
-		yCoord     = page_y - 40
-		player_1.y = yCoord
-		io.sockets.emit 'move_player_1', yCoord
+		io.sockets.emit 'paddle_1', percent
 
-	socket.on 'paddlemove_2', ( page_y ) ->
-		yCoord     = page_y - 40
-		player_2.y = yCoord
-		io.sockets.emit 'move_player_2', yCoord
+
+	socket.on 'move_2', ( percent ) ->
+
+		io.sockets.emit 'paddle_2', percent
+
+
+	socket.on 'paddlemove_1', ( percent ) ->
+
+		player_1.y = percent
+
+		io.sockets.emit 'move_player_1', percent
+
+
+	socket.on 'paddlemove_2', ( percent ) ->
+
+		player_2.y = percent
+
+		io.sockets.emit 'move_player_2', percent
 
 	############# P A D D L E #############
 
