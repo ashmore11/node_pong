@@ -21,7 +21,7 @@
     function App() {
       this.player_two_score = __bind(this.player_two_score, this);
       this.player_one_score = __bind(this.player_one_score, this);
-      this.tween_title_view = __bind(this.tween_title_view, this);
+      this.hide_title_view = __bind(this.hide_title_view, this);
       this.handle_load_complete = __bind(this.handle_load_complete, this);
       this.handle_file_load = __bind(this.handle_file_load, this);
       this.window = $(window);
@@ -55,11 +55,10 @@
         };
       })(this));
       this.socket.on('user_num', (function(_this) {
-        return function(user_num, user) {
-          console.log('USER NUM:', user_num, user);
+        return function(user_num) {
           return _this.delay(2000, function() {
             if (user_num === 2) {
-              return _this.tween_title_view();
+              return _this.hide_title_view();
             }
           });
         };
@@ -135,7 +134,7 @@
       return this.stage.addChild(this.title_view);
     };
 
-    App.prototype.tween_title_view = function() {
+    App.prototype.hide_title_view = function() {
       Tween.get(this.title_view).to({
         y: -((this.window.height() / 2) + 45)
       }, 500);
@@ -188,16 +187,17 @@
     App.prototype.paddle_events = function() {
       document.addEventListener('touchstart', (function(_this) {
         return function(event) {
-          var touch, _i, _len, _ref, _results;
+          var percent, touch, _i, _len, _ref, _results;
           _ref = event.touches;
           _results = [];
           for (_i = 0, _len = _ref.length; _i < _len; _i++) {
             touch = _ref[_i];
+            percent = (touch.pageY / $(window).height()) * 100;
             if (touch.pageX < $('#PongStage').width() / 2) {
-              _this.socket.emit('move_1', touch.pageY);
+              _this.socket.emit('move_1', percent);
             }
             if (touch.pageX > $('#PongStage').width() / 2) {
-              _results.push(_this.socket.emit('move_2', touch.pageY));
+              _results.push(_this.socket.emit('move_2', percent));
             } else {
               _results.push(void 0);
             }
@@ -207,16 +207,17 @@
       })(this));
       document.addEventListener('touchmove', (function(_this) {
         return function(event) {
-          var touch, _i, _len, _ref, _results;
+          var percent, touch, _i, _len, _ref, _results;
           _ref = event.touches;
           _results = [];
           for (_i = 0, _len = _ref.length; _i < _len; _i++) {
             touch = _ref[_i];
+            percent = (touch.pageY / $(window).height()) * 100;
             if (touch.pageX < $('#PongStage').width() / 2) {
-              _this.socket.emit('move_1', touch.pageY);
+              _this.socket.emit('move_1', percent);
             }
             if (touch.pageX > $('#PongStage').width() / 2) {
-              _results.push(_this.socket.emit('move_2', touch.pageY));
+              _results.push(_this.socket.emit('move_2', percent));
             } else {
               _results.push(void 0);
             }
@@ -225,13 +226,13 @@
         };
       })(this));
       this.socket.on('paddle_1', (function(_this) {
-        return function(pageY) {
-          return _this.move_paddle_1(pageY);
+        return function(percent) {
+          return _this.move_paddle_1(percent);
         };
       })(this));
       return this.socket.on('paddle_2', (function(_this) {
-        return function(pageY) {
-          return _this.move_paddle_2(pageY);
+        return function(percent) {
+          return _this.move_paddle_2(percent);
         };
       })(this));
     };
@@ -253,8 +254,10 @@
       });
     };
 
-    App.prototype.move_paddle_1 = function(pageY) {
-      this.socket.emit('paddlemove_1', pageY);
+    App.prototype.move_paddle_1 = function(percent) {
+      var page_y;
+      page_y = (percent / 100) * $(window).height();
+      this.socket.emit('paddlemove_1', page_y);
       return this.socket.on('move_player_1', function(yCoord) {
         var height;
         player_1.y = yCoord;
@@ -268,8 +271,10 @@
       });
     };
 
-    App.prototype.move_paddle_2 = function(pageY) {
-      this.socket.emit('paddlemove_2', pageY);
+    App.prototype.move_paddle_2 = function(percent) {
+      var page_y;
+      page_y = (percent / 100) * $(window).height();
+      this.socket.emit('paddlemove_2', page_y);
       return this.socket.on('move_player_2', function(yCoord) {
         var height;
         player_2.y = yCoord;

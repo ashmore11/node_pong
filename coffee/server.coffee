@@ -36,7 +36,7 @@ io.sockets.on 'connection', ( socket ) ->
 
 		user_num += 1
 
-		io.sockets.emit 'user_num', user_num, user
+		io.sockets.emit 'user_num', user_num
 
 		socket.set 'username', user, ->
 
@@ -72,16 +72,16 @@ io.sockets.on 'connection', ( socket ) ->
 
 	############# P A D D L E #############
 
-	socket.on 'move_1', ( pageY ) -> io.sockets.emit 'paddle_1', pageY
-	socket.on 'move_2', ( pageY ) -> io.sockets.emit 'paddle_2', pageY
+	socket.on 'move_1', ( percent ) -> io.sockets.emit 'paddle_1', percent
+	socket.on 'move_2', ( percent ) -> io.sockets.emit 'paddle_2', percent
 
-	socket.on 'paddlemove_1', ( pageY ) ->
-		yCoord     = pageY - 40
+	socket.on 'paddlemove_1', ( page_y ) ->
+		yCoord     = page_y - 40
 		player_1.y = yCoord
 		io.sockets.emit 'move_player_1', yCoord
 
-	socket.on 'paddlemove_2', ( pageY ) ->
-		yCoord     = pageY - 40
+	socket.on 'paddlemove_2', ( page_y ) ->
+		yCoord     = page_y - 40
 		player_2.y = yCoord
 		io.sockets.emit 'move_player_2', yCoord
 

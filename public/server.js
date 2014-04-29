@@ -46,7 +46,7 @@
   io.sockets.on('connection', function(socket) {
     socket.on('adduser', function(user) {
       user_num += 1;
-      io.sockets.emit('user_num', user_num, user);
+      io.sockets.emit('user_num', user_num);
       return socket.set('username', user, function() {
         users[user] = user;
         return io.sockets.emit('updateusers', user);
@@ -67,21 +67,21 @@
     socket.on('remove_win', function() {
       return io.sockets.emit('remove');
     });
-    socket.on('move_1', function(pageY) {
-      return io.sockets.emit('paddle_1', pageY);
+    socket.on('move_1', function(percent) {
+      return io.sockets.emit('paddle_1', percent);
     });
-    socket.on('move_2', function(pageY) {
-      return io.sockets.emit('paddle_2', pageY);
+    socket.on('move_2', function(percent) {
+      return io.sockets.emit('paddle_2', percent);
     });
-    socket.on('paddlemove_1', function(pageY) {
+    socket.on('paddlemove_1', function(page_y) {
       var yCoord;
-      yCoord = pageY - 40;
+      yCoord = page_y - 40;
       player_1.y = yCoord;
       return io.sockets.emit('move_player_1', yCoord);
     });
-    return socket.on('paddlemove_2', function(pageY) {
+    return socket.on('paddlemove_2', function(page_y) {
       var yCoord;
-      yCoord = pageY - 40;
+      yCoord = page_y - 40;
       player_2.y = yCoord;
       return io.sockets.emit('move_player_2', yCoord);
     });

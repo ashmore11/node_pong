@@ -50,11 +50,9 @@ class App
 					.fadeOut 1000, => $( @ ).html ''
 
 		# Check for number of users and execute according function
-		@socket.on 'user_num', ( user_num, user ) =>
+		@socket.on 'user_num', ( user_num ) =>
 
-			console.log 'USER NUM:', user_num, user
-
-			@delay 2000, => if user_num is 2 then @tween_title_view()
+			@delay 2000, => if user_num is 2 then @hide_title_view()
 
 		# Execute player score function when message is received from the server
 		@socket.on 'player_1_score', () => @player_one_score()
@@ -114,10 +112,12 @@ class App
 		@stage.addChild @title_view
 
 
-	tween_title_view: =>
+	hide_title_view: =>
 		
 		Tween.get( @title_view ).to y: -( ( @window.height() / 2 ) + 45 ), 500
-		@delay 500, => @add_game_view()
+		
+		@delay 500, =>
+			@add_game_view()
 
 
 	add_game_view: ->
@@ -170,18 +170,23 @@ class App
 		document.addEventListener 'touchstart', ( event ) =>
 
 			for touch in event.touches
-				if touch.pageX < $( '#PongStage' ).width() / 2 then @socket.emit 'move_1', touch.pageY
-				if touch.pageX > $( '#PongStage' ).width() / 2 then @socket.emit 'move_2', touch.pageY
+
+				percent = ( touch.pageY / $(window).height() ) * 100
+
+				if touch.pageX < $( '#PongStage' ).width() / 2 then @socket.emit 'move_1', percent
+				if touch.pageX > $( '#PongStage' ).width() / 2 then @socket.emit 'move_2', percent
 
 		document.addEventListener 'touchmove', ( event ) =>
 
 			for touch in event.touches
-				if touch.pageX < $( '#PongStage' ).width() / 2 then @socket.emit 'move_1', touch.pageY
-				if touch.pageX > $( '#PongStage' ).width() / 2 then @socket.emit 'move_2', touch.pageY
 
+				percent = ( touch.pageY / $(window).height() ) * 100
+			
+				if touch.pageX < $( '#PongStage' ).width() / 2 then @socket.emit 'move_1', percent
+				if touch.pageX > $( '#PongStage' ).width() / 2 then @socket.emit 'move_2', percent
 
-		@socket.on 'paddle_1', ( pageY ) => @move_paddle_1( pageY )
-		@socket.on 'paddle_2', ( pageY ) => @move_paddle_2( pageY )
+		@socket.on 'paddle_1', ( percent ) => @move_paddle_1( percent )
+		@socket.on 'paddle_2', ( percent ) => @move_paddle_2( percent )
 
 
 	start_game: ->
@@ -200,12 +205,15 @@ class App
 		@socket.on 'wall_hit',   -> $('#wall_hit')[0].play()
 
 
-	move_paddle_1: ( pageY ) ->
+	move_paddle_1: ( percent ) ->
+
+		page_y = ( percent / 100 ) * $(window).height()
 		
 		# Send & receive the touch coordinates to/from the server
-		@socket.emit 'paddlemove_1', pageY
+		@socket.emit 'paddlemove_1', page_y
 
 		@socket.on 'move_player_1', ( yCoord ) ->
+
 			player_1.y = yCoord
 
 			height = $(window).height() - 75
@@ -215,12 +223,15 @@ class App
 			if player_1.y <= 0      then player_1.y = 0
 
 
-	move_paddle_2: ( pageY ) ->
+	move_paddle_2: ( percent ) ->
+
+		page_y = ( percent / 100 ) * $(window).height()
 		
 		# Send & receive the touch coordinates to/from the server
-		@socket.emit 'paddlemove_2', pageY
+		@socket.emit 'paddlemove_2', page_y
 
 		@socket.on 'move_player_2', ( yCoord ) ->
+
 			player_2.y = yCoord
 
 			height = $(window).height() - 75
