@@ -1,4 +1,0 @@
-Pong
-====
-
-pong game
