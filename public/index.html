@@ -12,15 +12,32 @@
         <script src="http://code.createjs.com/movieclip-0.4.1.min.js"></script>
         <script src="socket.io/socket.io.js"></script>
         <script src="js/jquery.js"></script>
-        <script src="frontend.js"></script>
+        <script src="client.js"></script>
     </head>
     
     <body>
+
         <div id="container">
             <canvas id="PongStage" width="480" height="320"></canvas>
             <div class="background"></div>
             <div id="userDiv"></div>
             <div id="disconnectDiv"></div>
         </div>
+
+        <audio id="wall_hit">
+            <source src="audio/wall_hit.mp3"></source>
+            <source src="audio/wall_hit.ogg"></source>
+        </audio>
+
+        <audio id="paddle_hit">
+            <source src="audio/paddle_hit.mp3"></source>
+            <source src="audio/paddle_hit.ogg"></source>
+        </audio>
+
+        <audio id="cheer">
+            <source src="audio/cheer.mp3"></source>
+            <source src="audio/cheer.ogg"></source>
+        </audio>
+
     </body>
 </html>
