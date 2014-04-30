@@ -25,7 +25,7 @@
 	font-family: 'Arial';
 	font-size: 16px;
 	font-weight: bold;
-	color: #A3FF24;
+	color: #FFF;
 	z-index: 2;
 	display: none;
 }
@@ -39,7 +39,7 @@
 	font-family: 'Arial';
 	font-size: 16px;
 	font-weight: bold;
-	color: #A3FF24;
+	color: #FFF;
 	z-index: 2;
 	display: none;
 }
@@ -79,7 +79,7 @@
 		font-family: 'Arial';
 		font-size: 20px;
 		font-weight: bold;
-		color: #A3FF24;
+		color: #FFF;
 		z-index: 2;
 	}
 
@@ -92,7 +92,7 @@
 		font-family: 'Arial';
 		font-size: 20px;
 		font-weight: bold;
-		color: #A3FF24;
+		color: #FFF;
 		z-index: 2;
 	}
 

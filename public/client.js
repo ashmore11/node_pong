@@ -25,15 +25,14 @@
       this.handle_load_complete = __bind(this.handle_load_complete, this);
       this.handle_file_load = __bind(this.handle_file_load, this);
       this.window = $(window);
-      this.title_view = new Container();
-      this.Main();
-      $(window).on('touchmove', function(event) {
+      this.window.on('touchmove', function(event) {
         return event.preventDefault();
       });
+      this.handle_users();
+      this.create_stage();
     }
 
-    App.prototype.Main = function() {
-      var preloader;
+    App.prototype.handle_users = function() {
       this.socket = io.connect('http://scott.local:3700');
       this.socket.on('connect', (function(_this) {
         return function() {
@@ -68,11 +67,15 @@
           return _this.player_one_score();
         };
       })(this));
-      this.socket.on('player_2_score', (function(_this) {
+      return this.socket.on('player_2_score', (function(_this) {
         return function() {
           return _this.player_two_score();
         };
       })(this));
+    };
+
+    App.prototype.create_stage = function() {
+      var preloader;
       this.canvas = document.getElementById('PongStage');
       this.stage = new Stage(this.canvas);
       this.stage.canvas.width = $(window).width();
@@ -130,6 +133,7 @@
       Tween.get(wait).to({
         y: (this.window.height() / 2) - 45
       }, 500);
+      this.title_view = new Container();
       this.title_view.addChild(wait);
       return this.stage.addChild(this.title_view);
     };
@@ -238,14 +242,16 @@
     };
 
     App.prototype.start_game = function() {
-      this.socket.on('ballmove', function(x, y) {
-        ball.x = x;
-        return ball.y = y;
-      });
-      return this.play_audio();
+      this.socket.on('ballmove', (function(_this) {
+        return function(x, y) {
+          ball.x = (x / 100) * _this.window.width();
+          return ball.y = (y / 100) * _this.window.height();
+        };
+      })(this));
+      return this.trigger_audio();
     };
 
-    App.prototype.play_audio = function() {
+    App.prototype.trigger_audio = function() {
       this.socket.on('paddle_hit', function() {
         return $('#paddle_hit')[0].play();
       });
@@ -255,14 +261,14 @@
     };
 
     App.prototype.move_paddle_1 = function(percent) {
-      this.socket.emit('paddlemove_1', percent);
+      this.socket.emit('paddle_move_1', percent);
       return this.socket.on('move_player_1', function(percent) {
-        var height, page_y;
+        var bottom, page_y;
         page_y = (percent / 100) * $(window).height();
         player_1.y = page_y - 40;
-        height = $(window).height() - 75;
-        if (player_1.y >= height) {
-          player_1.y = height;
+        bottom = $(window).height() - 75;
+        if (player_1.y >= bottom) {
+          player_1.y = bottom;
         }
         if (player_1.y <= 0) {
           return player_1.y = 0;
@@ -271,14 +277,14 @@
     };
 
     App.prototype.move_paddle_2 = function(percent) {
-      this.socket.emit('paddlemove_2', percent);
+      this.socket.emit('paddle_move_2', percent);
       return this.socket.on('move_player_2', function(percent) {
-        var height, page_y;
+        var bottom, page_y;
         page_y = (percent / 100) * $(window).height();
         player_2.y = page_y - 40;
-        height = $(window).height() - 75;
-        if (player_2.y >= height) {
-          player_2.y = height;
+        bottom = $(window).height() - 75;
+        if (player_2.y >= bottom) {
+          player_2.y = bottom;
         }
         if (player_2.y <= 0) {
           return player_2.y = 0;
@@ -296,15 +302,15 @@
           };
         };
       })(this));
-      ball.x = 240 - 15;
-      ball.y = 160 - 15;
+      ball.x = (this.window.width() / 2) - 15;
+      ball.y = (this.window.height() / 2) - 15;
       if (this.player_1_score.text === 3) {
-        player_1_win.x = 140;
-        player_1_win.y = -90;
+        player_1_win.x = (this.window.width() / 2) - 100;
+        player_1_win.y = this.window.height() / 2;
         this.stage.addChild(player_1_win);
         Tween.get(player_1_win).to({
-          y: 115
-        }, 300);
+          y: (this.window.height() / 2) - 45
+        }, 500);
         return this.reset_game();
       }
     };
@@ -319,15 +325,15 @@
           };
         };
       })(this));
-      ball.x = 240 - 15;
-      ball.y = 160 - 15;
+      ball.x = (this.window.width() / 2) - 15;
+      ball.y = (this.window.height() / 2) - 15;
       if (this.player_2_score.text === 3) {
-        player_2_win.x = 140;
-        player_2_win.y = -90;
+        player_2_win.x = (this.window.width() / 2) - 100;
+        player_2_win.y = this.window.height() / 2;
         this.stage.addChild(player_2_win);
         Tween.get(player_2_win).to({
-          y: 115
-        }, 300);
+          y: (this.window.height() / 2) - 45
+        }, 500);
         return this.reset_game();
       }
     };

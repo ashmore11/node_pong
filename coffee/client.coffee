@@ -11,15 +11,13 @@ class App
 	constructor: ->
 
 		@window = $ window
+		@window.on 'touchmove', ( event ) -> event.preventDefault()
 
-		@title_view = new Container()
-
-		@Main()
-
-		$( window ).on 'touchmove', ( event ) -> event.preventDefault()
+		@handle_users()
+		@create_stage()
 
 
-	Main: ->
+	handle_users: ->
 
 		# Connect to server and add usernames
 		@socket = io.connect 'http://scott.local:3700'
@@ -58,8 +56,11 @@ class App
 		@socket.on 'player_1_score', () => @player_one_score()
 		@socket.on 'player_2_score', () => @player_two_score()
 
-		@canvas = document.getElementById 'PongStage'
-		@stage  = new Stage @canvas
+
+	create_stage: ->
+
+		@canvas     = document.getElementById 'PongStage'
+		@stage      = new Stage @canvas
 
 		@stage.canvas.width  = $( window ).width()
 		@stage.canvas.height = $( window ).height()
@@ -108,6 +109,7 @@ class App
 
 		Tween.get( wait ).to y: ( @window.height() / 2 ) - 45, 500
 
+		@title_view = new Container()
 		@title_view.addChild wait
 		@stage.addChild @title_view
 
@@ -192,14 +194,15 @@ class App
 	start_game: ->
 
 		# receiving ball coordinates from the server
-		@socket.on 'ballmove', ( x , y ) ->
-			ball.x = x
-			ball.y = y
+		@socket.on 'ballmove', ( x , y ) =>
+			
+			ball.x = ( x / 100 ) * @window.width()
+			ball.y = ( y / 100 ) * @window.height()
 
-		@play_audio()
+		@trigger_audio()
 
 
-	play_audio: ->
+	trigger_audio: ->
 
 		@socket.on 'paddle_hit', -> $('#paddle_hit')[0].play()
 		@socket.on 'wall_hit',   -> $('#wall_hit')[0].play()
@@ -208,7 +211,7 @@ class App
 	move_paddle_1: ( percent ) ->
 		
 		# Send & receive the touch coordinates to/from the server
-		@socket.emit 'paddlemove_1', percent
+		@socket.emit 'paddle_move_1', percent
 
 		@socket.on 'move_player_1', ( percent ) ->
 
@@ -216,17 +219,17 @@ class App
 
 			player_1.y = page_y - 40
 
-			height = $(window).height() - 75
+			bottom = $(window).height() - 75
 
 			# Stop player_1 paddle from leaving the screen
-			if player_1.y >= height then player_1.y = height
+			if player_1.y >= bottom then player_1.y = bottom
 			if player_1.y <= 0      then player_1.y = 0
 
 
 	move_paddle_2: ( percent ) ->
 		
 		# Send & receive the touch coordinates to/from the server
-		@socket.emit 'paddlemove_2', percent
+		@socket.emit 'paddle_move_2', percent
 
 		@socket.on 'move_player_2', ( percent ) ->
 
@@ -234,10 +237,10 @@ class App
 
 			player_2.y = page_y - 40
 
-			height = $(window).height() - 75
+			bottom = $(window).height() - 75
 
 			# Stop player_2 paddle from leaving the screen
-			if player_2.y >= height then player_2.y = height
+			if player_2.y >= bottom then player_2.y = bottom
 			if player_2.y <= 0      then player_2.y = 0
 
 
@@ -254,16 +257,17 @@ class App
 				@socket.emit 'ball_pressed'
 
 		# Reset ball position
-		ball.x = 240 - 15
-		ball.y = 160 - 15
+		ball.x = ( @window.width()  / 2 ) - 15
+		ball.y = ( @window.height() / 2 ) - 15
 
 		# Tween the win element when the user reaches 3
 		if @player_1_score.text is 3
-			player_1_win.x = 140
-			player_1_win.y = -90
+			player_1_win.x = ( @window.width() / 2 ) - 100
+			player_1_win.y = ( @window.height() / 2 )
 
 			@stage.addChild player_1_win
-			Tween.get( player_1_win ).to y: 115, 300
+			Tween.get( player_1_win ).to y: ( @window.height() / 2 ) - 45, 500
+
 			@reset_game()
 
 		
@@ -280,16 +284,16 @@ class App
 				@socket.emit 'ball_pressed'
 
 		# Reset ball position
-		ball.x = 240 - 15
-		ball.y = 160 - 15
+		ball.x = ( @window.width()  / 2 ) - 15
+		ball.y = ( @window.height() / 2 ) - 15
 
 		# Tween the win element when the user reaches 3
 		if @player_2_score.text is 3
-			player_2_win.x = 140
-			player_2_win.y = -90
+			player_2_win.x = ( @window.width() / 2 ) - 100
+			player_2_win.y = ( @window.height() / 2 )
 
 			@stage.addChild player_2_win
-			Tween.get( player_2_win ).to y: 115, 300
+			Tween.get( player_2_win ).to y: ( @window.height() / 2 ) - 45, 500
 
 			@reset_game()
 

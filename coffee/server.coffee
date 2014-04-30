@@ -6,31 +6,31 @@ app.use express.static( __dirname + '/' )
 
 io = require('socket.io').listen app.listen( port )
 
-io.set('log level', 2)
+io.set('log level', 0)
 
 # Routing
 app.get '/', ( req, res ) -> res.sendfile __dirname + '/index.html'
 
 # Variables
 ball = 
-	x : 240 - 15
-	y : 160 - 15
+	x: 50
+	y: 50
 
 player_1 = 
-	x : 2
-	y : 160 - 37.5
+	x : 1
+	y : 50
 
 player_2 = 
-	x : 480 - 25
-	y : 160 - 37.5
+	x : 99
+	y : 50
 
-xSpeed   = 5
-ySpeed   = 5
+xSpeed   = 0.5
+ySpeed   = 0.7
 user_num = 0
 timer    = null
 users    = []
 
-io.sockets.on 'connection', ( socket ) ->
+io.sockets.on 'connection', ( socket ) =>
 
 	socket.on 'adduser', ( user ) ->
 
@@ -82,14 +82,14 @@ io.sockets.on 'connection', ( socket ) ->
 		io.sockets.emit 'paddle_2', percent
 
 
-	socket.on 'paddlemove_1', ( percent ) ->
+	socket.on 'paddle_move_1', ( percent ) ->
 
 		player_1.y = percent
 
 		io.sockets.emit 'move_player_1', percent
 
 
-	socket.on 'paddlemove_2', ( percent ) ->
+	socket.on 'paddle_move_2', ( percent ) ->
 
 		player_2.y = percent
 
@@ -101,22 +101,22 @@ io.sockets.on 'connection', ( socket ) ->
 start_game = ->
 
 	clearInterval timer
-	timer = setInterval update, 20
+	timer = setInterval update, 25
 
 
 reset = ->
 
 	ball = 
-		x : 240 - 15
-		y : 160 - 15
+		x: 50
+		y: 50
 
 	player_1 = 
-		x : 2
-		y : 160 - 37.5
+		x : 1
+		y : 50
 
 	player_2 = 
-		x : 480 - 25
-		y : 160 - 37.5
+		x : 99
+		y : 50
 
 	io.sockets.emit 'reset_game'
 
@@ -131,28 +131,28 @@ update = ->
 
 	io.sockets.emit 'ballmove', ball.x, ball.y
 	
-	if ball.y < 0
+	if ball.y <= 0
 		ySpeed = -ySpeed
 		io.sockets.emit 'wall_hit'
 	
-	if ball.y + 30 > 320
+	if ball.y >= 95
 		ySpeed = -ySpeed
 		io.sockets.emit 'wall_hit'
 
-	if ball.x <= player_1.x + 22 and ball.x > player_1.x and ball.y >= player_1.y and ball.y < player_1.y + 75
-		xSpeed *= -1
+	if ball.x is player_1.x + 0.5 and ball.y > player_1.y - 10 and ball.y < player_1.y + 10
+		xSpeed = -xSpeed
 		io.sockets.emit 'paddle_hit'
 
-	if ball.x + 30 > player_2.x and ball.x + 30 < player_2.x + 22 and ball.y >= player_2.y and ball.y < player_2.y + 75
-		xSpeed *= -1
+	if ball.x is player_2.x - 3.5 and ball.y > player_2.y - 10 and ball.y < player_2.y + 10
+		xSpeed = -xSpeed
 		io.sockets.emit 'paddle_hit'
 
-	if ball.x + 30 > 480
+	if ball.x > 99
 		xSpeed = -xSpeed
 		io.sockets.emit 'player_1_score'
 		reset()
 
-	if ball.x < 0
+	if ball.x < 1
 		xSpeed = -xSpeed
 		io.sockets.emit 'player_2_score'
 		reset()
