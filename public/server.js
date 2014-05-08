@@ -69,25 +69,19 @@
         return io.sockets.emit('remove');
       });
       socket.on('move_1', function(percent) {
+        player_1.y = percent;
         return io.sockets.emit('paddle_1', percent);
       });
-      socket.on('move_2', function(percent) {
-        return io.sockets.emit('paddle_2', percent);
-      });
-      socket.on('paddle_move_1', function(percent) {
-        player_1.y = percent;
-        return io.sockets.emit('move_player_1', percent);
-      });
-      return socket.on('paddle_move_2', function(percent) {
+      return socket.on('move_2', function(percent) {
         player_2.y = percent;
-        return io.sockets.emit('move_player_2', percent);
+        return io.sockets.emit('paddle_2', percent);
       });
     };
   })(this));
 
   start_game = function() {
     clearInterval(timer);
-    return timer = setInterval(update, 25);
+    return timer = setInterval(update, 10);
   };
 
   reset = function() {
@@ -112,7 +106,7 @@
     ball.x = ball.x + xSpeed;
     ball.y = ball.y + ySpeed;
     io.sockets.emit('ballmove', ball.x, ball.y);
-    if (ball.y <= 0) {
+    if (ball.y <= 5) {
       ySpeed = -ySpeed;
       io.sockets.emit('wall_hit');
     }
@@ -120,11 +114,11 @@
       ySpeed = -ySpeed;
       io.sockets.emit('wall_hit');
     }
-    if (ball.x === player_1.x + 0.5 && ball.y > player_1.y - 10 && ball.y < player_1.y + 10) {
+    if (ball.x === player_1.x + 4 && ball.y > player_1.y - 10 && ball.y < player_1.y + 10) {
       xSpeed = -xSpeed;
       io.sockets.emit('paddle_hit');
     }
-    if (ball.x === player_2.x - 3.5 && ball.y > player_2.y - 10 && ball.y < player_2.y + 10) {
+    if (ball.x === player_2.x - 4 && ball.y > player_2.y - 10 && ball.y < player_2.y + 10) {
       xSpeed = -xSpeed;
       io.sockets.emit('paddle_hit');
     }

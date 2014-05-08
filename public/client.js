@@ -47,9 +47,10 @@
           return _this.socket.on('user_disconnect', function(user) {
             var html;
             html = user + ' has disconnected...';
-            return $('#disconnectDiv').html(html).fadeIn(1000).delay(1000).fadeOut(1000, function() {
+            $('#disconnectDiv').html(html).fadeIn(1000).delay(1000).fadeOut(1000, function() {
               return $(_this).html('');
             });
+            return _this.reset_game();
           });
         };
       })(this));
@@ -78,8 +79,8 @@
       var preloader;
       this.canvas = document.getElementById('PongStage');
       this.stage = new Stage(this.canvas);
-      this.stage.canvas.width = $(window).width();
-      this.stage.canvas.height = $(window).height();
+      this.stage.canvas.width = this.window.width();
+      this.stage.canvas.height = this.window.height();
       this.images = [
         {
           id: 'wait',
@@ -139,9 +140,11 @@
     };
 
     App.prototype.hide_title_view = function() {
-      Tween.get(this.title_view).to({
-        y: -((this.window.height() / 2) + 45)
-      }, 500);
+      if (this.title_view !== null) {
+        Tween.get(this.title_view).to({
+          y: -((this.window.height() / 2) + 45)
+        }, 500);
+      }
       return this.delay(500, (function(_this) {
         return function() {
           return _this.add_game_view();
@@ -150,27 +153,52 @@
     };
 
     App.prototype.add_game_view = function() {
+      var h, oh, ow, scale, w;
       $('#PongStage').css({
         opacity: 0
       });
       this.stage.removeChild(this.title_view);
       this.title_view = null;
-      player_1.x = 2;
-      player_1.y = (this.window.height() / 2) - 37.5;
-      player_2.x = this.window.width() - 25;
-      player_2.y = (this.window.height() / 2) - 37.5;
-      ball.x = (this.window.width() / 2) - 15;
-      ball.y = (this.window.height() / 2) - 15;
-      this.player_1_score = new Text('0', 'bold 20px Arial', '#FFF');
-      this.player_1_score.x = (this.window.width() / 2) - 30;
+      w = this.window.width() / 4;
+      h = this.window.height() / 4;
+      ow = 22;
+      oh = 75;
+      scale = Math.min(w / ow, h / oh);
+      player_1.scaleX = scale;
+      player_1.scaleY = scale;
+      player_1.x = 0;
+      player_1.y = this.window.height() / 2;
+      player_1.regY = player_1.image.height / 2;
+      player_2.scaleX = scale;
+      player_2.scaleY = scale;
+      player_2.x = this.window.width() - (player_2.image.width * scale);
+      player_2.y = this.window.height() / 2;
+      player_2.regY = player_2.image.height / 2;
+      w = this.window.width() / 10;
+      h = this.window.height() / 10;
+      ow = 30;
+      oh = 30;
+      scale = Math.min(w / ow, h / oh);
+      ball.scaleX = scale;
+      ball.scaleY = scale;
+      ball.x = this.window.width() / 2;
+      ball.y = this.window.height() / 2;
+      ball.regX = ball.image.width / 2;
+      ball.regY = ball.image.height / 2;
+      this.player_1_score = new Text('0', '20px Arial', '#FFF');
+      this.player_1_score.x = (this.window.width() / 2) - 15;
       this.player_1_score.y = 20;
-      this.player_2_score = new Text('0', 'bold 20px Arial', '#FFF');
+      this.player_1_score.textAlign = 'right';
+      this.player_2_score = new Text('0', '20px Arial', '#FFF');
       this.player_2_score.x = (this.window.width() / 2) + 15;
       this.player_2_score.y = 20;
+      this.player_2_score.textAlign = 'left';
       this.stage.addChild(this.player_1_score, this.player_2_score, player_1, player_2, ball);
       $('#PongStage').animate({
         opacity: 1
       }, 500);
+      this.move_paddle_1();
+      this.move_paddle_2();
       this.paddle_events();
       return this.trigger_game();
     };
@@ -209,7 +237,7 @@
           return _results;
         };
       })(this));
-      document.addEventListener('touchmove', (function(_this) {
+      return document.addEventListener('touchmove', (function(_this) {
         return function(event) {
           var percent, touch, _i, _len, _ref, _results;
           _ref = event.touches;
@@ -229,16 +257,6 @@
           return _results;
         };
       })(this));
-      this.socket.on('paddle_1', (function(_this) {
-        return function(percent) {
-          return _this.move_paddle_1(percent);
-        };
-      })(this));
-      return this.socket.on('paddle_2', (function(_this) {
-        return function(percent) {
-          return _this.move_paddle_2(percent);
-        };
-      })(this));
     };
 
     App.prototype.start_game = function() {
@@ -251,59 +269,60 @@
       return this.trigger_audio();
     };
 
-    App.prototype.trigger_audio = function() {
-      this.socket.on('paddle_hit', function() {
-        return $('#paddle_hit')[0].play();
-      });
-      return this.socket.on('wall_hit', function() {
-        return $('#wall_hit')[0].play();
-      });
+    App.prototype.trigger_audio = function() {};
+
+    App.prototype.move_paddle_1 = function() {
+      return this.socket.on('paddle_1', (function(_this) {
+        return function(percent) {
+          var bottom, h, oh, ow, page_y, scale, top, w;
+          w = _this.window.width() / 4;
+          h = _this.window.height() / 4;
+          ow = 22;
+          oh = 75;
+          scale = Math.min(w / ow, h / oh);
+          page_y = (percent / 100) * _this.window.height();
+          player_1.y = page_y;
+          bottom = _this.window.height() - ((player_1.image.height * scale) / 2);
+          top = 0 + ((player_1.image.height * scale) / 2);
+          if (player_1.y >= bottom) {
+            player_1.y = bottom;
+          }
+          if (player_1.y <= top) {
+            return player_1.y = top;
+          }
+        };
+      })(this));
     };
 
-    App.prototype.move_paddle_1 = function(percent) {
-      this.socket.emit('paddle_move_1', percent);
-      return this.socket.on('move_player_1', function(percent) {
-        var bottom, page_y;
-        page_y = (percent / 100) * $(window).height();
-        player_1.y = page_y - 40;
-        bottom = $(window).height() - 75;
-        if (player_1.y >= bottom) {
-          player_1.y = bottom;
-        }
-        if (player_1.y <= 0) {
-          return player_1.y = 0;
-        }
-      });
-    };
-
-    App.prototype.move_paddle_2 = function(percent) {
-      this.socket.emit('paddle_move_2', percent);
-      return this.socket.on('move_player_2', function(percent) {
-        var bottom, page_y;
-        page_y = (percent / 100) * $(window).height();
-        player_2.y = page_y - 40;
-        bottom = $(window).height() - 75;
-        if (player_2.y >= bottom) {
-          player_2.y = bottom;
-        }
-        if (player_2.y <= 0) {
-          return player_2.y = 0;
-        }
-      });
+    App.prototype.move_paddle_2 = function() {
+      return this.socket.on('paddle_2', (function(_this) {
+        return function(percent) {
+          var bottom, h, oh, ow, page_y, scale, top, w;
+          w = _this.window.width() / 4;
+          h = _this.window.height() / 4;
+          ow = 22;
+          oh = 75;
+          scale = Math.min(w / ow, h / oh);
+          page_y = (percent / 100) * _this.window.height();
+          player_2.y = page_y;
+          bottom = _this.window.height() - ((player_2.image.height * scale) / 2);
+          top = 0 + ((player_2.image.height * scale) / 2);
+          if (player_2.y >= bottom) {
+            player_2.y = bottom;
+          }
+          if (player_2.y <= top) {
+            return player_2.y = top;
+          }
+        };
+      })(this));
     };
 
     App.prototype.player_one_score = function() {
-      $('#cheer')[0].play();
       this.player_1_score.text = parseInt(this.player_1_score.text + 1.0);
-      this.socket.on('reset_game', (function(_this) {
-        return function() {
-          return ball.onPress = function() {
-            return _this.socket.emit('ball_pressed');
-          };
-        };
-      })(this));
-      ball.x = (this.window.width() / 2) - 15;
-      ball.y = (this.window.height() / 2) - 15;
+      ball.x = this.window.width() / 2;
+      ball.y = this.window.height() / 2;
+      ball.regX = ball.image.width / 2;
+      ball.regY = ball.image.height / 2;
       if (this.player_1_score.text === 3) {
         player_1_win.x = (this.window.width() / 2) - 100;
         player_1_win.y = this.window.height() / 2;
@@ -316,17 +335,11 @@
     };
 
     App.prototype.player_two_score = function() {
-      $('#cheer')[0].play();
       this.player_2_score.text = parseInt(this.player_2_score.text + 1.0);
-      this.socket.on('reset_game', (function(_this) {
-        return function() {
-          return ball.onPress = function() {
-            return _this.socket.emit('ball_pressed');
-          };
-        };
-      })(this));
-      ball.x = (this.window.width() / 2) - 15;
-      ball.y = (this.window.height() / 2) - 15;
+      ball.x = this.window.width() / 2;
+      ball.y = this.window.height() / 2;
+      ball.regX = ball.image.width / 2;
+      ball.regY = ball.image.height / 2;
       if (this.player_2_score.text === 3) {
         player_2_win.x = (this.window.width() / 2) - 100;
         player_2_win.y = this.window.height() / 2;
@@ -340,12 +353,14 @@
 
     App.prototype.reset_game = function() {
       this.stage.removeChild(this.player_1_score, this.player_2_score);
-      this.player_1_score = new Text('0', 'bold 20px Arial', '#FFF');
-      this.player_1_score.x = ($(window).width() / 2) - 30;
+      this.player_1_score = new Text('0', '20px Arial', '#FFF');
+      this.player_1_score.x = (this.window.width() / 2) - 15;
       this.player_1_score.y = 20;
-      this.player_2_score = new Text('0', 'bold 20px Arial', '#FFF');
-      this.player_2_score.x = ($(window).width() / 2) + 15;
+      this.player_1_score.textAlign = 'right';
+      this.player_2_score = new Text('0', '20px Arial', '#FFF');
+      this.player_2_score.x = (this.window.width() / 2) + 15;
       this.player_2_score.y = 20;
+      this.player_2_score.textAlign = 'left';
       this.stage.addChild(this.player_1_score, this.player_2_score);
       player_1_win.onPress = (function(_this) {
         return function() {

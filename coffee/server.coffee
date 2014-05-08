@@ -70,38 +70,24 @@ io.sockets.on 'connection', ( socket ) =>
 		io.sockets.emit 'remove'
 
 
-	############# P A D D L E #############
-
 	socket.on 'move_1', ( percent ) ->
+
+		player_1.y = percent
 
 		io.sockets.emit 'paddle_1', percent
 
 
 	socket.on 'move_2', ( percent ) ->
 
-		io.sockets.emit 'paddle_2', percent
-
-
-	socket.on 'paddle_move_1', ( percent ) ->
-
-		player_1.y = percent
-
-		io.sockets.emit 'move_player_1', percent
-
-
-	socket.on 'paddle_move_2', ( percent ) ->
-
 		player_2.y = percent
 
-		io.sockets.emit 'move_player_2', percent
-
-	############# P A D D L E #############
+		io.sockets.emit 'paddle_2', percent
 
 
 start_game = ->
 
 	clearInterval timer
-	timer = setInterval update, 25
+	timer = setInterval update, 10
 
 
 reset = ->
@@ -131,7 +117,7 @@ update = ->
 
 	io.sockets.emit 'ballmove', ball.x, ball.y
 	
-	if ball.y <= 0
+	if ball.y <= 5
 		ySpeed = -ySpeed
 		io.sockets.emit 'wall_hit'
 	
@@ -139,11 +125,11 @@ update = ->
 		ySpeed = -ySpeed
 		io.sockets.emit 'wall_hit'
 
-	if ball.x is player_1.x + 0.5 and ball.y > player_1.y - 10 and ball.y < player_1.y + 10
+	if ball.x is player_1.x + 4 and ball.y > player_1.y - 10 and ball.y < player_1.y + 10
 		xSpeed = -xSpeed
 		io.sockets.emit 'paddle_hit'
 
-	if ball.x is player_2.x - 3.5 and ball.y > player_2.y - 10 and ball.y < player_2.y + 10
+	if ball.x is player_2.x - 4 and ball.y > player_2.y - 10 and ball.y < player_2.y + 10
 		xSpeed = -xSpeed
 		io.sockets.emit 'paddle_hit'
 
