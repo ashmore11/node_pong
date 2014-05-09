@@ -1,6 +1,7 @@
 class App
 
 	window       : null
+	pong_stage   : null
 	socket       : null
 	canvas       : null
 	stage        : null
@@ -10,8 +11,13 @@ class App
 
 	constructor: ->
 
-		@window = $ window
+		@window     = $ window
+		@pong_stage = $ '#PongStage'
+
 		@window.on 'touchmove', ( event ) -> event.preventDefault()
+		@window.on 'resize', @on_resize()
+
+		@cc = window.cc = new CoffeeCollider
 
 		@handle_users()
 		@create_stage()
@@ -121,15 +127,15 @@ class App
 
 	add_game_view: ->
 
-		$('#PongStage').css opacity: 0
+		@pong_stage.css opacity: 0
 		
 		@stage.removeChild @title_view
 		@title_view = null
 
-		w     = @window.width() / 4
-		h     = @window.height() / 4
-		ow    = 22
-		oh    = 75
+		w     = @window.width() / 5
+		h     = @window.height() / 5
+		ow    = 145
+		oh    = 1129
 		scale = Math.min w / ow, h / oh
 
 		player_1.scaleX = scale
@@ -146,8 +152,8 @@ class App
 
 		w     = @window.width() / 10
 		h     = @window.height() / 10
-		ow    = 30
-		oh    = 30
+		ow    = 245
+		oh    = 400
 		scale = Math.min w / ow, h / oh
 
 		ball.scaleX = scale
@@ -171,7 +177,7 @@ class App
 
 		@stage.addChild @player_1_score, @player_2_score, player_1, player_2, ball
 
-		$('#PongStage').animate opacity: 1, 500
+		@pong_stage.animate opacity: 1, 500
 
 		@move_paddle_1()
 		@move_paddle_2()
@@ -190,23 +196,15 @@ class App
 
 	paddle_events: ->
 
-		document.addEventListener 'touchstart', ( event ) =>
+		@window.on 'touchstart touchmove mousedown mousemove', ( event ) =>
 
-			for touch in event.touches
+			page_y = event.originalEvent.pageY
+			page_x = event.originalEvent.pageX
 
-				percent = ( touch.pageY / $(window).height() ) * 100
+			percent = ( page_y / @window.height() ) * 100
 
-				if touch.pageX < $( '#PongStage' ).width() / 2 then @socket.emit 'move_1', percent
-				if touch.pageX > $( '#PongStage' ).width() / 2 then @socket.emit 'move_2', percent
-
-		document.addEventListener 'touchmove', ( event ) =>
-
-			for touch in event.touches
-
-				percent = ( touch.pageY / $(window).height() ) * 100
-
-				if touch.pageX < $( '#PongStage' ).width() / 2 then @socket.emit 'move_1', percent
-				if touch.pageX > $( '#PongStage' ).width() / 2 then @socket.emit 'move_2', percent
+			if page_x < @pong_stage.width() / 2 then @socket.emit 'move_1', percent
+			if page_x > @pong_stage.width() / 2 then @socket.emit 'move_2', percent
 
 
 	start_game: ->
@@ -216,23 +214,69 @@ class App
 			ball.x = ( x / 100 ) * @window.width()
 			ball.y = ( y / 100 ) * @window.height()
 
+		Tween.get( ball, loop: true ).to rotation: 360, 1000
+
 		@trigger_audio()
 
 
 	trigger_audio: ->
 
-		# @socket.on 'paddle_hit', -> $('#paddle_hit')[0].play()
-		# @socket.on 'wall_hit',   -> $('#wall_hit')[0].play()
+		# cc.run """
+
+		# synth = SynthDef (freq)->
+
+		# 	s = SinOscFB.ar( freq ) * Line.kr(1, 0, dur:0.5, doneAction:2)
+		# 	s = s.dup()
+		# 	Out.ar(0, s) * 0.5
+
+		# .add()
+
+		# p = Pseq( [ 55,0,0,0 ], Infinity )
+
+		# Task ->
+		# 	0.wait()
+		# 	p.do syncblock (freq)->
+		# 		# freq = (60 - 24 + i).midicps()
+
+		# 		Synth(synth, freq:freq)
+
+		# 		[0.5].choose().wait()
+		# .start()
+
+		# p = Pseq( [ 55,0,0,0,55*1.25 ], Infinity )
+
+		# Task ->
+		# 	0.2.wait()
+		# 	p.do syncblock (freq)->
+		# 		# freq = (60 - 24 + i).midicps()
+
+		# 		Synth(synth, freq:freq)
+
+		# 		[0.5].choose().wait()
+		# .start()
+		
+		# """, on
+
+		@socket.on 'paddle_hit', ->
+
+			Tween.removeTweens ball
+			Tween.get( ball, loop: true ).to rotation: 360, 1000
+
+
+		@socket.on 'wall_hit',   ->
+
+			Tween.removeTweens ball
+			Tween.get( ball, loop: true ).to rotation: -360, 1000
 
 
 	move_paddle_1: ->
 
 		@socket.on 'paddle_1', ( percent ) =>
 
-			w     = @window.width() / 4
-			h     = @window.height() / 4
-			ow    = 22
-			oh    = 75
+			w     = @window.width() / 5
+			h     = @window.height() / 5
+			ow    = 145
+			oh    = 1129
 			scale = Math.min w / ow, h / oh
 
 			page_y     = ( percent / 100 ) * @window.height()
@@ -248,10 +292,10 @@ class App
 
 		@socket.on 'paddle_2', ( percent ) =>
 
-			w     = @window.width() / 4
-			h     = @window.height() / 4
-			ow    = 22
-			oh    = 75
+			w     = @window.width() / 5
+			h     = @window.height() / 5
+			ow    = 145
+			oh    = 1129
 			scale = Math.min w / ow, h / oh
 
 			page_y     = ( percent / 100 ) * @window.height()
@@ -265,7 +309,8 @@ class App
 
 	player_one_score: =>
 
-		# $('#cheer')[0].play()
+		Tween.removeTweens ball
+		Tween.get( ball ).to rotation: 0, 1
 
 		@player_1_score.text = parseInt @player_1_score.text + 1.0
 
@@ -287,7 +332,8 @@ class App
 		
 	player_two_score: =>
 
-		# $('#cheer')[0].play()
+		Tween.removeTweens ball
+		Tween.get( ball ).to rotation: 0, 1
 		
 		@player_2_score.text = parseInt @player_2_score.text + 1.0
 
@@ -342,6 +388,11 @@ class App
 	delay: ( time, fn, args ) ->
 		
 		setTimeout fn, time, args
+
+
+	on_resize: ->
+		
+		$('body').animate scrollTop: 0, 1000
 
 
 $ -> app = new App

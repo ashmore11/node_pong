@@ -6,6 +6,8 @@
   App = (function() {
     App.prototype.window = null;
 
+    App.prototype.pong_stage = null;
+
     App.prototype.socket = null;
 
     App.prototype.canvas = null;
@@ -25,9 +27,12 @@
       this.handle_load_complete = __bind(this.handle_load_complete, this);
       this.handle_file_load = __bind(this.handle_file_load, this);
       this.window = $(window);
+      this.pong_stage = $('#PongStage');
       this.window.on('touchmove', function(event) {
         return event.preventDefault();
       });
+      this.window.on('resize', this.on_resize());
+      this.cc = window.cc = new CoffeeCollider;
       this.handle_users();
       this.create_stage();
     }
@@ -154,15 +159,15 @@
 
     App.prototype.add_game_view = function() {
       var h, oh, ow, scale, w;
-      $('#PongStage').css({
+      this.pong_stage.css({
         opacity: 0
       });
       this.stage.removeChild(this.title_view);
       this.title_view = null;
-      w = this.window.width() / 4;
-      h = this.window.height() / 4;
-      ow = 22;
-      oh = 75;
+      w = this.window.width() / 5;
+      h = this.window.height() / 5;
+      ow = 145;
+      oh = 1129;
       scale = Math.min(w / ow, h / oh);
       player_1.scaleX = scale;
       player_1.scaleY = scale;
@@ -176,8 +181,8 @@
       player_2.regY = player_2.image.height / 2;
       w = this.window.width() / 10;
       h = this.window.height() / 10;
-      ow = 30;
-      oh = 30;
+      ow = 245;
+      oh = 400;
       scale = Math.min(w / ow, h / oh);
       ball.scaleX = scale;
       ball.scaleY = scale;
@@ -194,7 +199,7 @@
       this.player_2_score.y = 20;
       this.player_2_score.textAlign = 'left';
       this.stage.addChild(this.player_1_score, this.player_2_score, player_1, player_2, ball);
-      $('#PongStage').animate({
+      this.pong_stage.animate({
         opacity: 1
       }, 500);
       this.move_paddle_1();
@@ -217,44 +222,18 @@
     };
 
     App.prototype.paddle_events = function() {
-      document.addEventListener('touchstart', (function(_this) {
+      return this.window.on('touchstart touchmove mousedown mousemove', (function(_this) {
         return function(event) {
-          var percent, touch, _i, _len, _ref, _results;
-          _ref = event.touches;
-          _results = [];
-          for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-            touch = _ref[_i];
-            percent = (touch.pageY / $(window).height()) * 100;
-            if (touch.pageX < $('#PongStage').width() / 2) {
-              _this.socket.emit('move_1', percent);
-            }
-            if (touch.pageX > $('#PongStage').width() / 2) {
-              _results.push(_this.socket.emit('move_2', percent));
-            } else {
-              _results.push(void 0);
-            }
+          var page_x, page_y, percent;
+          page_y = event.originalEvent.pageY;
+          page_x = event.originalEvent.pageX;
+          percent = (page_y / _this.window.height()) * 100;
+          if (page_x < _this.pong_stage.width() / 2) {
+            _this.socket.emit('move_1', percent);
           }
-          return _results;
-        };
-      })(this));
-      return document.addEventListener('touchmove', (function(_this) {
-        return function(event) {
-          var percent, touch, _i, _len, _ref, _results;
-          _ref = event.touches;
-          _results = [];
-          for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-            touch = _ref[_i];
-            percent = (touch.pageY / $(window).height()) * 100;
-            if (touch.pageX < $('#PongStage').width() / 2) {
-              _this.socket.emit('move_1', percent);
-            }
-            if (touch.pageX > $('#PongStage').width() / 2) {
-              _results.push(_this.socket.emit('move_2', percent));
-            } else {
-              _results.push(void 0);
-            }
+          if (page_x > _this.pong_stage.width() / 2) {
+            return _this.socket.emit('move_2', percent);
           }
-          return _results;
         };
       })(this));
     };
@@ -266,19 +245,41 @@
           return ball.y = (y / 100) * _this.window.height();
         };
       })(this));
+      Tween.get(ball, {
+        loop: true
+      }).to({
+        rotation: 360
+      }, 1000);
       return this.trigger_audio();
     };
 
-    App.prototype.trigger_audio = function() {};
+    App.prototype.trigger_audio = function() {
+      this.socket.on('paddle_hit', function() {
+        Tween.removeTweens(ball);
+        return Tween.get(ball, {
+          loop: true
+        }).to({
+          rotation: 360
+        }, 1000);
+      });
+      return this.socket.on('wall_hit', function() {
+        Tween.removeTweens(ball);
+        return Tween.get(ball, {
+          loop: true
+        }).to({
+          rotation: -360
+        }, 1000);
+      });
+    };
 
     App.prototype.move_paddle_1 = function() {
       return this.socket.on('paddle_1', (function(_this) {
         return function(percent) {
           var bottom, h, oh, ow, page_y, scale, top, w;
-          w = _this.window.width() / 4;
-          h = _this.window.height() / 4;
-          ow = 22;
-          oh = 75;
+          w = _this.window.width() / 5;
+          h = _this.window.height() / 5;
+          ow = 145;
+          oh = 1129;
           scale = Math.min(w / ow, h / oh);
           page_y = (percent / 100) * _this.window.height();
           player_1.y = page_y;
@@ -298,10 +299,10 @@
       return this.socket.on('paddle_2', (function(_this) {
         return function(percent) {
           var bottom, h, oh, ow, page_y, scale, top, w;
-          w = _this.window.width() / 4;
-          h = _this.window.height() / 4;
-          ow = 22;
-          oh = 75;
+          w = _this.window.width() / 5;
+          h = _this.window.height() / 5;
+          ow = 145;
+          oh = 1129;
           scale = Math.min(w / ow, h / oh);
           page_y = (percent / 100) * _this.window.height();
           player_2.y = page_y;
@@ -318,6 +319,10 @@
     };
 
     App.prototype.player_one_score = function() {
+      Tween.removeTweens(ball);
+      Tween.get(ball).to({
+        rotation: 0
+      }, 1);
       this.player_1_score.text = parseInt(this.player_1_score.text + 1.0);
       ball.x = this.window.width() / 2;
       ball.y = this.window.height() / 2;
@@ -335,6 +340,10 @@
     };
 
     App.prototype.player_two_score = function() {
+      Tween.removeTweens(ball);
+      Tween.get(ball).to({
+        rotation: 0
+      }, 1);
       this.player_2_score.text = parseInt(this.player_2_score.text + 1.0);
       ball.x = this.window.width() / 2;
       ball.y = this.window.height() / 2;
@@ -391,6 +400,12 @@
 
     App.prototype.delay = function(time, fn, args) {
       return setTimeout(fn, time, args);
+    };
+
+    App.prototype.on_resize = function() {
+      return $('body').animate({
+        scrollTop: 0
+      }, 1000);
     };
 
     return App;
