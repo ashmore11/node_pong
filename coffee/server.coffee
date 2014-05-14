@@ -24,8 +24,8 @@ player_2 =
 	x : 99
 	y : 50
 
-xSpeed   = 0.5
-ySpeed   = 0.7
+x_speed  = 1
+y_speed  = 1.2
 user_num = 0
 timer    = null
 users    = []
@@ -38,9 +38,11 @@ io.sockets.on 'connection', ( socket ) =>
 
 		io.sockets.emit 'user_num', user_num
 
+		if user_num > 2 then io.sockets.socket( socket.id ).emit 'max_users', user
+
 		socket.set 'username', user, ->
 
-			users[ user ] = user
+			users.push user
 
 			io.sockets.emit 'updateusers', user
 
@@ -53,9 +55,9 @@ io.sockets.on 'connection', ( socket ) =>
 
 		socket.get 'username', ( err, user ) ->
 
-			delete users[ user ]
-
 			io.sockets.emit 'user_disconnect', user
+
+			delete users[ user ]
 
 
 	socket.on 'ball_pressed', ->
@@ -84,10 +86,15 @@ io.sockets.on 'connection', ( socket ) =>
 		io.sockets.emit 'paddle_2', percent
 
 
+	socket.on 'single_player_mode', ( y ) ->
+
+		player_2.y = y
+
+
 start_game = ->
 
 	clearInterval timer
-	timer = setInterval update, 10
+	timer = setInterval update, 15
 
 
 reset = ->
@@ -110,35 +117,44 @@ reset = ->
 	timer = null
 
 
+increase_speed = ( axis ) ->
+
+	speed = Math.floor( ( axis * -1.02 ) * 100 ) / 100
+
+	return speed
+
+
 update = ->
 
-	ball.x = ball.x + xSpeed
-	ball.y = ball.y + ySpeed
+	ball.x = ball.x + x_speed
+	ball.y = ball.y + y_speed
 
 	io.sockets.emit 'ballmove', ball.x, ball.y
 	
 	if ball.y <= 5
-		ySpeed = -ySpeed
+		y_speed = increase_speed y_speed
 		io.sockets.emit 'wall_hit'
 	
 	if ball.y >= 95
-		ySpeed = -ySpeed
+		y_speed = increase_speed y_speed
 		io.sockets.emit 'wall_hit'
 
-	if ball.x is player_1.x + 4 and ball.y > player_1.y - 10 and ball.y < player_1.y + 10
-		xSpeed = -xSpeed
+	if ball.x > player_1.x and ball.x < player_1.x + 4 and ball.y > player_1.y - 10 and ball.y < player_1.y + 10
+		x_speed = increase_speed x_speed
 		io.sockets.emit 'paddle_hit'
 
-	if ball.x is player_2.x - 4 and ball.y > player_2.y - 10 and ball.y < player_2.y + 10
-		xSpeed = -xSpeed
+	if ball.x < player_2.x and ball.x > player_2.x - 4 and ball.y > player_2.y - 10 and ball.y < player_2.y + 10
+		x_speed = increase_speed x_speed
 		io.sockets.emit 'paddle_hit'
 
 	if ball.x > 99
-		xSpeed = -xSpeed
+		if x_speed < 0 then x_speed = 1 else x_speed = -1
+		if y_speed < 0 then y_speed = 1.2 else y_speed = -1.2
 		io.sockets.emit 'player_1_score'
 		reset()
 
 	if ball.x < 1
-		xSpeed = -xSpeed
+		if x_speed < 0 then x_speed = 1 else x_speed = -1
+		if y_speed < 0 then y_speed = 1.2 else y_speed = -1.2
 		io.sockets.emit 'player_2_score'
 		reset()

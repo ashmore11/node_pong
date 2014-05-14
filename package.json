@@ -3,9 +3,8 @@
 	"version"      : "0.0.1",
 	"description"  : "Multiplayer Pong Game using Web Sockets",
 	"dependencies" : {
-		"socket.io"     : "latest",
-		"express"       : "latest",
-		"coffee-script" : "latest"
+		"socket.io" : "latest",
+		"express"   : "latest"
 	},
 	"author" : "Scott Ashmore"
 }

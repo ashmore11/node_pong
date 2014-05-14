@@ -39,3 +39,45 @@
 	z-index         : -1;
 }
 
+#single_player, #multiplayer {
+	position    : absolute;
+	top         : 60%;
+	left        : 50%;
+	width       : 283px;
+	height      : 90px;
+	margin-left : -141px;
+	cursor      : pointer;
+	z-index     : 1;
+	opacity     : 0;
+}
+
+#multiplayer {
+	top: 50%
+}
+
+.timer {
+	position    : absolute;
+	top         : 10px;
+	left        : 0;
+	width       : 100%;
+	font-family : 'Arial';
+	font-size   : 14px;
+	text-align  : center;
+	color       : white;
+}
+
+.score_alert, .high_score {
+	position    : absolute;
+	bottom      : 10px;
+	left        : 0;
+	width       : 100%;
+	font-family : 'Arial';
+	font-size   : 14px;
+	text-align  : center;
+	color       : white;
+}
+
+.score_alert {
+	bottom: 30px;
+}
+

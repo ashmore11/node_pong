@@ -1,18 +1,70 @@
+class Timer
+
+	offset   : null
+	clock    : null
+	interval : null
+	delay    : null
+	el       : null
+
+	constructor: ( element, delay ) ->
+		@el    = element
+		@delay = delay
+
+		@reset()
+
+	start: ->
+		if !@interval
+			@offset   = Date.now()
+			@interval = setInterval @update, @delay
+
+	stop: ->
+
+		if @interval
+			clearInterval @interval
+			@interval = null
+
+	reset: ->
+		@clock = 0
+		@render()
+
+	update: =>
+		@clock += @delta()
+		@render()
+
+	render: ->
+		@el.html @clock / 1000
+
+	delta: ->
+		now = Date.now()
+		d   = now - @offset
+
+		@offset = now
+
+		return d
+
+
 class App
 
-	window       : null
-	pong_stage   : null
-	socket       : null
-	canvas       : null
-	stage        : null
-	images       : null
-	title_view   : null
-	total_loaded : 0
+	window        : null
+	pong_stage    : null
+	single_player : null
+	socket        : null
+	canvas        : null
+	stage         : null
+	images        : null
+	title_view    : null
+	total_loaded  : 0
+	user_id       : null
+	timer         : null
+	score         : 0
+
+	single_player_mode : false
 
 	constructor: ->
 
-		@window     = $ window
-		@pong_stage = $ '#PongStage'
+		@window        = $ window
+		@pong_stage    = $ '#PongStage'
+		@single_player = $ '#single_player'
 
 		@window.on 'touchmove', ( event ) -> event.preventDefault()
 		@window.on 'resize', @on_resize()
@@ -28,6 +80,7 @@ class App
 		@socket = io.connect 'http://scott.local:3700'
 
 		@socket.on 'connect', () =>
+
 			@socket.emit 'adduser', prompt "What's your name?"
 
 			@socket.on 'updateusers', ( user ) =>
@@ -52,12 +105,31 @@ class App
 
 				@reset_game()
 
+				@single_player.show -> $( @ ).animate opacity: 1
+
 		@socket.on 'user_num', ( user_num ) =>
 
-			@delay 2000, => if user_num is 2 then @hide_title_view()
+			@delay 2000, => 
+				if user_num is 2
+					@hide_title_view()
+					@single_player_mode = false
 
 		@socket.on 'player_1_score', () => @player_one_score()
 		@socket.on 'player_2_score', () => @player_two_score()
+
+		@socket.on 'max_users', ( user ) => @too_many_users user
+
+
+	too_many_users: ( user ) ->
+
+		# show too many users screen
+		html = 'Hello ' + user + ', there are too many users, please wait for a player to leave...'
+
+		$( '#userDiv' )
+			.html    html 
+			.fadeIn  1000 
+			.delay   5000 
+			.fadeOut 1000, => $( @ ).html ''
 
 
 	create_stage: ->
@@ -115,8 +187,17 @@ class App
 		@title_view.addChild wait
 		@stage.addChild @title_view
 
+		@single_player.animate opacity: 1
+
+		@single_player.on 'click', =>
+			@single_player_mode = true
+			@timer = new Timer $('.timer'), 10
+			@hide_title_view()
+
 
 	hide_title_view: =>
+
+		@single_player.animate opacity: 0, -> $( @ ).hide()
 		
 		if @title_view != null
 			Tween.get( @title_view ).to y: -( ( @window.height() / 2 ) + 45 ), 500
@@ -175,7 +256,12 @@ class App
 		@player_2_score.y         = 20
 		@player_2_score.textAlign = 'left'
 
-		@stage.addChild @player_1_score, @player_2_score, player_1, player_2, ball
+		# @stage.addChild @player_1_score, @player_2_score, player_1, player_2, ball
+
+		if @single_player_mode
+			@stage.addChild player_1, player_2, ball
+		else
+			@stage.addChild @player_1_score, @player_2_score, player_1, player_2, ball
 
 		@pong_stage.animate opacity: 1, 500
 
@@ -209,53 +295,26 @@ class App
 
 	start_game: ->
 
+		if @single_player_mode
+			@timer.start()
+
 		@socket.on 'ballmove', ( x , y ) =>
 			
 			ball.x = ( x / 100 ) * @window.width()
 			ball.y = ( y / 100 ) * @window.height()
 
+			if @single_player_mode
+
+				@socket.emit 'single_player_mode', y
+
+				player_2.y = ( y / 100 ) * @window.height()
+
 		Tween.get( ball, loop: true ).to rotation: 360, 1000
 
-		@trigger_audio()
+		@tween_ball()
 
 
-	trigger_audio: ->
-
-		# cc.run """
-
-		# synth = SynthDef (freq)->
-
-		# 	s = SinOscFB.ar( freq ) * Line.kr(1, 0, dur:0.5, doneAction:2)
-		# 	s = s.dup()
-		# 	Out.ar(0, s) * 0.5
-
-		# .add()
-
-		# p = Pseq( [ 55,0,0,0 ], Infinity )
-
-		# Task ->
-		# 	0.wait()
-		# 	p.do syncblock (freq)->
-		# 		# freq = (60 - 24 + i).midicps()
-
-		# 		Synth(synth, freq:freq)
-
-		# 		[0.5].choose().wait()
-		# .start()
-
-		# p = Pseq( [ 55,0,0,0,55*1.25 ], Infinity )
-
-		# Task ->
-		# 	0.2.wait()
-		# 	p.do syncblock (freq)->
-		# 		# freq = (60 - 24 + i).midicps()
-
-		# 		Synth(synth, freq:freq)
-
-		# 		[0.5].choose().wait()
-		# .start()
-		
-		# """, on
+	tween_ball: ->
 
 		@socket.on 'paddle_hit', ->
 
@@ -263,7 +322,7 @@ class App
 			Tween.get( ball, loop: true ).to rotation: 360, 1000
 
 
-		@socket.on 'wall_hit',   ->
+		@socket.on 'wall_hit', ->
 
 			Tween.removeTweens ball
 			Tween.get( ball, loop: true ).to rotation: -360, 1000
@@ -334,8 +393,13 @@ class App
 
 		Tween.removeTweens ball
 		Tween.get( ball ).to rotation: 0, 1
-		
-		@player_2_score.text = parseInt @player_2_score.text + 1.0
+
+		if @single_player_mode
+			@single_player_score $('.timer').html()
+			@timer.stop()
+			@timer.reset()
+		else
+			@player_2_score.text = parseInt @player_2_score.text + 1.0
 
 		ball.x    = @window.width()   / 2
 		ball.y    = @window.height()  / 2
@@ -353,21 +417,49 @@ class App
 			@reset_game()
 
 
+	single_player_score: ( score ) ->
+
+		if score > @score
+
+			$('.score_alert')
+				.html    'NEW HIGH SCORE!' 
+				.fadeIn  1000 
+				.delay   2500 
+				.fadeOut 1000, => $( @ ).html ''
+
+			$('.high_score').html 'HIGH SCORE: ' +  score + ' SECONDS'
+
+		else
+
+			$('.score_alert')
+				.html    'YOU SUCK!' 
+				.fadeIn  1000 
+				.delay   2500 
+				.fadeOut 1000, => $( @ ).html ''
+
+			$('.high_score').html 'HIGH SCORE: ' + @score + ' SECONDS'
+
+		@score = score
+
+
+
 	reset_game: ->
 
-		@stage.removeChild @player_1_score, @player_2_score
+		if !@single_player_mode
 
-		@player_1_score           = new Text '0', '20px Arial', '#FFF'
-		@player_1_score.x         = ( @window.width() / 2 ) - 15
-		@player_1_score.y         = 20
-		@player_1_score.textAlign = 'right'
+			@stage.removeChild @player_1_score, @player_2_score
 
-		@player_2_score           = new Text '0', '20px Arial', '#FFF'
-		@player_2_score.x         = ( @window.width() / 2 ) + 15
-		@player_2_score.y         = 20
-		@player_2_score.textAlign = 'left'
+			@player_1_score           = new Text '0', '20px Arial', '#FFF'
+			@player_1_score.x         = ( @window.width() / 2 ) - 15
+			@player_1_score.y         = 20
+			@player_1_score.textAlign = 'right'
 
-		@stage.addChild @player_1_score, @player_2_score
+			@player_2_score           = new Text '0', '20px Arial', '#FFF'
+			@player_2_score.x         = ( @window.width() / 2 ) + 15
+			@player_2_score.y         = 20
+			@player_2_score.textAlign = 'left'
+
+			@stage.addChild @player_1_score, @player_2_score
 
 		player_1_win.onPress = =>
 			@socket.emit 'remove_win'
@@ -391,7 +483,7 @@ class App
 
 
 	on_resize: ->
-		
+
 		$('body').animate scrollTop: 0, 1000
 
 
