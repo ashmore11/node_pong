@@ -1,6 +1,7 @@
 * {
-	-webkit-tap-highlight-color : rgba(0, 0, 0, 0); 
-	margin : 0;
+	-webkit-tap-highlight-color : rgba(0, 0, 0, 0);
+	padding : 0;
+	margin  : 0;
 }
 
 #PongStage {
@@ -16,7 +17,7 @@
 	height   : 100%;
 }
 
-#userDiv, #disconnectDiv {
+#user_div, #disconnect_div {
 	position    : absolute;
 	bottom      : 15px;
 	left        : 50%;
@@ -30,7 +31,7 @@
 	display     : none;
 }
 
-.background {
+#background {
 	position        : absolute;
 	width           : 100%;
 	height          : 100%;
@@ -39,7 +40,7 @@
 	z-index         : -1;
 }
 
-#single_player, #multiplayer {
+#single_player, #multiplayer, #wait, #max_users {
 	position    : absolute;
 	top         : 60%;
 	left        : 50%;
@@ -47,15 +48,27 @@
 	height      : 90px;
 	margin-left : -141px;
 	cursor      : pointer;
-	z-index     : 1;
+	z-index     : 4;
 	opacity     : 0;
 }
 
-#multiplayer {
-	top: 50%
+#multiplayer, #wait, #max_users {
+	z-index : 3;
+	top     : 50%;
+	margin-top: -95px;
 }
 
-.timer {
+#wait {
+	cursor: default;
+	z-index: 2;
+}
+
+#max_users {
+	cursor: default;
+	z-index: 1;
+}
+
+#timer {
 	position    : absolute;
 	top         : 10px;
 	left        : 0;
@@ -66,7 +79,7 @@
 	color       : white;
 }
 
-.score_alert, .high_score {
+#score_alert, #high_score {
 	position    : absolute;
 	bottom      : 10px;
 	left        : 0;
@@ -77,7 +90,7 @@
 	color       : white;
 }
 
-.score_alert {
-	bottom: 30px;
+#score_alert {
+	bottom : 30px;
 }
 

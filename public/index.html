@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html>
+
 	<head>
+
 		<title>Node Pong</title>
 		<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimal-ui">
 		<meta name="apple-mobile-web-app-status-bar-style" content="black">
@@ -11,26 +13,34 @@
 		<script src="js/createjs/easeljs-0.4.2.min.js"></script>
 		<script src="js/createjs/tweenjs-0.2.0.min.js"></script>
 		<script src="js/createjs/preloadjs-0.1.0.min.js"></script>
-		<script src="js/cs.js"></script>
-		<script src="js/coffee-collider.js"></script>
 		<script src="js/jquery.js"></script>
 		<script src="socket.io/socket.io.js"></script>
 		<script src="client.js"></script>
+	
 	</head>
 	
 	<body>
 
 		<div id="container">
+
 			<canvas id="PongStage" width="480" height="320"></canvas>
-			<div class="background"></div>
-			<div id="userDiv"></div>
-			<div id="disconnectDiv"></div>
+			
+			<div id="background"></div>
+			
+			<div id="user_div"></div>
+			<div id="disconnect_div"></div>
+			
 			<img id="single_player" src="images/single_player.png" height="90" width="283" />
 			<img id="multiplayer" src="images/multiplayer.png" height="90" width="283" />
-			<div class="timer"></div>
-			<div class="score_alert"></div>
-			<div class="high_score"></div>
+			<img id="wait" src="images/waiting.gif" height="90" width="283" />
+			<img id="max_users" src="images/max_users.png" height="90" width="283" />
+			
+			<div id="timer"></div>
+			<div id="score_alert"></div>
+			<div id="high_score"></div>
+		
 		</div>
 
 	</body>
+
 </html>

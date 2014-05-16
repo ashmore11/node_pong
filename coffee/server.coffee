@@ -6,10 +6,10 @@ app.use express.static( __dirname + '/' )
 
 io = require('socket.io').listen app.listen( port )
 
-io.set('log level', 0)
+io.set( 'log level', 0 )
 
 # Routing
-app.get '/', ( req, res ) -> res.sendfile __dirname + '/index.html'
+app.get '/', ( req, res ) -> res.sendfile( __dirname + '/index.html' )
 
 # Variables
 ball = 
@@ -89,6 +89,11 @@ io.sockets.on 'connection', ( socket ) =>
 	socket.on 'single_player_mode', ( y ) ->
 
 		player_2.y = y
+
+
+	socket.on 'players_ready', ->
+
+		io.sockets.emit 'start_game'
 
 
 start_game = ->

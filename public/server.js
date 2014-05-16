@@ -79,8 +79,11 @@
         player_2.y = percent;
         return io.sockets.emit('paddle_2', percent);
       });
-      return socket.on('single_player_mode', function(y) {
+      socket.on('single_player_mode', function(y) {
         return player_2.y = y;
+      });
+      return socket.on('players_ready', function() {
+        return io.sockets.emit('start_game');
       });
     };
   })(this));

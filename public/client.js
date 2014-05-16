@@ -68,6 +68,12 @@
 
     App.prototype.single_player = null;
 
+    App.prototype.multiplayer = null;
+
+    App.prototype.user_div = null;
+
+    App.prototype.disconnect_div = null;
+
     App.prototype.socket = null;
 
     App.prototype.canvas = null;
@@ -86,7 +92,17 @@
 
     App.prototype.score = 0;
 
-    App.prototype.single_player_mode = false;
+    App.prototype.high_score = null;
+
+    App.prototype.score_alert = null;
+
+    App.prototype.x_speed = null;
+
+    App.prototype.y_speed = null;
+
+    App.prototype.single_player_mode = true;
+
+    App.prototype.single_player_timer = null;
 
     function App() {
       this.player_two_score = __bind(this.player_two_score, this);
@@ -97,35 +113,70 @@
       this.window = $(window);
       this.pong_stage = $('#PongStage');
       this.single_player = $('#single_player');
+      this.multiplayer = $('#multiplayer');
+      this.wait = $('#wait');
+      this.max_users = $('#max_users');
+      this.user_div = $('#user_div');
+      this.disconnect_div = $('#disconnect_div');
+      this.high_score = $('#high_score');
+      this.score_alert = $('#score_alert');
+      this.single_player.css({
+        top: (this.window.height() / 2) + 5
+      });
       this.window.on('touchmove', function(event) {
         return event.preventDefault();
       });
       this.window.on('resize', this.on_resize());
-      this.cc = window.cc = new CoffeeCollider;
-      this.handle_users();
       this.create_stage();
+      this.multiplayer.on('click', (function(_this) {
+        return function() {
+          _this.single_player_mode = false;
+          return _this.handle_users();
+        };
+      })(this));
+      this.single_player.on('click', (function(_this) {
+        return function() {
+          _this.single_player_mode = true;
+          _this.timer = new Timer($('#timer'), 10);
+          return _this.hide_title_view();
+        };
+      })(this));
     }
 
     App.prototype.handle_users = function() {
       this.socket = io.connect('http://scott.local:3700');
       this.socket.on('connect', (function(_this) {
         return function() {
+          _this.multiplayer.animate({
+            opacity: 0
+          }, function() {
+            return $(this).hide();
+          });
+          _this.wait.animate({
+            opacity: 1,
+            marginTop: -95
+          }, 1000);
           _this.socket.emit('adduser', prompt("What's your name?"));
           _this.socket.on('updateusers', function(user) {
             var html;
             html = user + ' has joined the game!';
-            return $('#userDiv').html(html).fadeIn(1000).delay(1000).fadeOut(1000, function() {
+            return _this.user_div.html(html).fadeIn(1000).delay(1000).fadeOut(1000, function() {
               return $(_this).html('');
             });
           });
           return _this.socket.on('user_disconnect', function(user) {
             var html;
             html = user + ' has disconnected...';
-            $('#disconnectDiv').html(html).fadeIn(1000).delay(1000).fadeOut(1000, function() {
+            _this.disconnect_div.html(html).fadeIn(1000).delay(1000).fadeOut(1000, function() {
               return $(_this).html('');
             });
             _this.reset_game();
-            return _this.single_player.show(function() {
+            _this.single_player.show(function() {
+              return $(this).animate({
+                opacity: 1
+              });
+            });
+            return _this.multiplayer.show(function() {
               return $(this).animate({
                 opacity: 1
               });
@@ -135,11 +186,11 @@
       })(this));
       this.socket.on('user_num', (function(_this) {
         return function(user_num) {
-          return _this.delay(2000, function() {
-            if (user_num === 2) {
-              _this.hide_title_view();
-              return _this.single_player_mode = false;
-            }
+          if (user_num === 2) {
+            _this.socket.emit('players_ready');
+          }
+          return _this.socket.on('start_game', function() {
+            return _this.players_ready();
           });
         };
       })(this));
@@ -161,13 +212,10 @@
     };
 
     App.prototype.too_many_users = function(user) {
-      var html;
-      html = 'Hello ' + user + ', there are too many users, please wait for a player to leave...';
-      return $('#userDiv').html(html).fadeIn(1000).delay(5000).fadeOut(1000, (function(_this) {
-        return function() {
-          return $(_this).html('');
-        };
-      })(this));
+      this.wait.hide();
+      return this.max_users.show().animate({
+        opacity: 1
+      });
     };
 
     App.prototype.create_stage = function() {
@@ -178,9 +226,6 @@
       this.stage.canvas.height = this.window.height();
       this.images = [
         {
-          id: 'wait',
-          src: 'images/waiting.gif'
-        }, {
           id: 'player_1',
           src: 'images/paddle.png'
         }, {
@@ -224,28 +269,42 @@
     };
 
     App.prototype.add_title_view = function() {
-      wait.x = (this.window.width() / 2) - 142;
-      wait.y = this.window.height() / 2;
-      Tween.get(wait).to({
-        y: (this.window.height() / 2) - 45
-      }, 500);
-      this.title_view = new Container();
-      this.title_view.addChild(wait);
-      this.stage.addChild(this.title_view);
       this.single_player.animate({
         opacity: 1
       });
-      return this.single_player.on('click', (function(_this) {
+      this.multiplayer.animate({
+        opacity: 1
+      });
+      this.title_view = new Container();
+      return this.stage.addChild(this.title_view);
+    };
+
+    App.prototype.players_ready = function() {
+      this.single_player_mode = false;
+      return this.delay(1000, (function(_this) {
         return function() {
-          _this.single_player_mode = true;
-          _this.timer = new Timer($('.timer'), 10);
           return _this.hide_title_view();
         };
       })(this));
     };
 
     App.prototype.hide_title_view = function() {
+      this.multiplayer.animate({
+        opacity: 0
+      }, function() {
+        return $(this).hide();
+      });
       this.single_player.animate({
+        opacity: 0
+      }, function() {
+        return $(this).hide();
+      });
+      this.wait.animate({
+        opacity: 0
+      }, function() {
+        return $(this).hide();
+      });
+      this.max_users.animate({
         opacity: 0
       }, function() {
         return $(this).hide();
@@ -295,24 +354,26 @@
       ball.y = this.window.height() / 2;
       ball.regX = ball.image.width / 2;
       ball.regY = ball.image.height / 2;
-      this.player_1_score = new Text('0', '20px Arial', '#FFF');
-      this.player_1_score.x = (this.window.width() / 2) - 15;
-      this.player_1_score.y = 20;
-      this.player_1_score.textAlign = 'right';
-      this.player_2_score = new Text('0', '20px Arial', '#FFF');
-      this.player_2_score.x = (this.window.width() / 2) + 15;
-      this.player_2_score.y = 20;
-      this.player_2_score.textAlign = 'left';
       if (this.single_player_mode) {
         this.stage.addChild(player_1, player_2, ball);
       } else {
+        this.player_1_score = new Text('0', '20px Arial', '#FFF');
+        this.player_1_score.x = (this.window.width() / 2) - 15;
+        this.player_1_score.y = 20;
+        this.player_1_score.textAlign = 'right';
+        this.player_2_score = new Text('0', '20px Arial', '#FFF');
+        this.player_2_score.x = (this.window.width() / 2) + 15;
+        this.player_2_score.y = 20;
+        this.player_2_score.textAlign = 'left';
         this.stage.addChild(this.player_1_score, this.player_2_score, player_1, player_2, ball);
       }
       this.pong_stage.animate({
         opacity: 1
       }, 500);
       this.move_paddle_1();
-      this.move_paddle_2();
+      if (!this.single_player_mode) {
+        this.move_paddle_2();
+      }
       this.paddle_events();
       return this.trigger_game();
     };
@@ -320,14 +381,20 @@
     App.prototype.trigger_game = function() {
       ball.onPress = (function(_this) {
         return function() {
-          return _this.socket.emit('ball_pressed');
+          if (_this.single_player_mode) {
+            return _this.start_game();
+          } else {
+            return _this.socket.emit('ball_pressed');
+          }
         };
       })(this);
-      return this.socket.on('game_started', (function(_this) {
-        return function() {
-          return _this.start_game();
-        };
-      })(this));
+      if (!this.single_player_mode) {
+        return this.socket.on('game_started', (function(_this) {
+          return function() {
+            return _this.start_game();
+          };
+        })(this));
+      }
     };
 
     App.prototype.paddle_events = function() {
@@ -337,78 +404,58 @@
           page_y = event.originalEvent.pageY;
           page_x = event.originalEvent.pageX;
           percent = (page_y / _this.window.height()) * 100;
-          if (page_x < _this.pong_stage.width() / 2) {
-            _this.socket.emit('move_1', percent);
-          }
-          if (page_x > _this.pong_stage.width() / 2) {
-            return _this.socket.emit('move_2', percent);
-          }
-        };
-      })(this));
-    };
-
-    App.prototype.start_game = function() {
-      if (this.single_player_mode) {
-        this.timer.start();
-      }
-      this.socket.on('ballmove', (function(_this) {
-        return function(x, y) {
-          ball.x = (x / 100) * _this.window.width();
-          ball.y = (y / 100) * _this.window.height();
           if (_this.single_player_mode) {
-            _this.socket.emit('single_player_mode', y);
-            return player_2.y = (y / 100) * _this.window.height();
+            return _this.move_paddle_1(page_y);
+          } else {
+            if (page_x < _this.pong_stage.width() / 2) {
+              _this.socket.emit('move_1', percent);
+            }
+            if (page_x > _this.pong_stage.width() / 2) {
+              return _this.socket.emit('move_2', percent);
+            }
           }
         };
       })(this));
-      Tween.get(ball, {
-        loop: true
-      }).to({
-        rotation: 360
-      }, 1000);
-      return this.tween_ball();
     };
 
-    App.prototype.tween_ball = function() {
-      this.socket.on('paddle_hit', function() {
-        Tween.removeTweens(ball);
-        return Tween.get(ball, {
-          loop: true
-        }).to({
-          rotation: 360
-        }, 1000);
-      });
-      return this.socket.on('wall_hit', function() {
-        Tween.removeTweens(ball);
-        return Tween.get(ball, {
-          loop: true
-        }).to({
-          rotation: -360
-        }, 1000);
-      });
-    };
-
-    App.prototype.move_paddle_1 = function() {
-      return this.socket.on('paddle_1', (function(_this) {
-        return function(percent) {
-          var bottom, h, oh, ow, page_y, scale, top, w;
-          w = _this.window.width() / 5;
-          h = _this.window.height() / 5;
-          ow = 145;
-          oh = 1129;
-          scale = Math.min(w / ow, h / oh);
-          page_y = (percent / 100) * _this.window.height();
-          player_1.y = page_y;
-          bottom = _this.window.height() - ((player_1.image.height * scale) / 2);
-          top = 0 + ((player_1.image.height * scale) / 2);
-          if (player_1.y >= bottom) {
-            player_1.y = bottom;
-          }
-          if (player_1.y <= top) {
-            return player_1.y = top;
-          }
-        };
-      })(this));
+    App.prototype.move_paddle_1 = function(page_y) {
+      var bottom, h, oh, ow, scale, top, w;
+      if (this.single_player_mode) {
+        w = this.window.width() / 5;
+        h = this.window.height() / 5;
+        ow = 145;
+        oh = 1129;
+        scale = Math.min(w / ow, h / oh);
+        player_1.y = page_y;
+        bottom = this.window.height() - ((player_1.image.height * scale) / 2);
+        top = (player_1.image.height * scale) / 2;
+        if (player_1.y >= bottom) {
+          player_1.y = bottom;
+        }
+        if (player_1.y <= top) {
+          return player_1.y = top;
+        }
+      } else {
+        return this.socket.on('paddle_1', (function(_this) {
+          return function(percent) {
+            w = _this.window.width() / 5;
+            h = _this.window.height() / 5;
+            ow = 145;
+            oh = 1129;
+            scale = Math.min(w / ow, h / oh);
+            page_y = (percent / 100) * _this.window.height();
+            player_1.y = page_y;
+            bottom = _this.window.height() - ((player_1.image.height * scale) / 2);
+            top = 0 + ((player_1.image.height * scale) / 2);
+            if (player_1.y >= bottom) {
+              player_1.y = bottom;
+            }
+            if (player_1.y <= top) {
+              return player_1.y = top;
+            }
+          };
+        })(this));
+      }
     };
 
     App.prototype.move_paddle_2 = function() {
@@ -434,12 +481,59 @@
       })(this));
     };
 
+    App.prototype.start_game = function() {
+      if (this.single_player_mode) {
+        this.timer.start();
+        this.x_speed = 12;
+        this.y_speed = 10;
+        this.single_player_timer = setInterval((function(_this) {
+          return function() {
+            return _this.single_player_update();
+          };
+        })(this), 15);
+      } else {
+        this.socket.on('ballmove', (function(_this) {
+          return function(x, y) {
+            ball.x = (x / 100) * _this.window.width();
+            return ball.y = (y / 100) * _this.window.height();
+          };
+        })(this));
+      }
+      Tween.get(ball, {
+        loop: true
+      }).to({
+        rotation: 360
+      }, 1000);
+      return this.tween_ball();
+    };
+
+    App.prototype.tween_ball = function() {
+      if (!this.single_player_mode) {
+        this.socket.on('paddle_hit', function() {
+          Tween.removeTweens(ball);
+          return Tween.get(ball, {
+            loop: true
+          }).to({
+            rotation: 360
+          }, 1000);
+        });
+        return this.socket.on('wall_hit', function() {
+          Tween.removeTweens(ball);
+          return Tween.get(ball, {
+            loop: true
+          }).to({
+            rotation: -360
+          }, 1000);
+        });
+      }
+    };
+
     App.prototype.player_one_score = function() {
       Tween.removeTweens(ball);
       Tween.get(ball).to({
         rotation: 0
       }, 1);
-      this.player_1_score.text = parseInt(this.player_1_score.text + 1.0);
+      this.player_1_score.text = parseInt(this.player_1_score.text + 1);
       ball.x = this.window.width() / 2;
       ball.y = this.window.height() / 2;
       ball.regX = ball.image.width / 2;
@@ -460,44 +554,41 @@
       Tween.get(ball).to({
         rotation: 0
       }, 1);
-      if (this.single_player_mode) {
-        this.single_player_score($('.timer').html());
-        this.timer.stop();
-        this.timer.reset();
-      } else {
-        this.player_2_score.text = parseInt(this.player_2_score.text + 1.0);
-      }
       ball.x = this.window.width() / 2;
       ball.y = this.window.height() / 2;
-      ball.regX = ball.image.width / 2;
-      ball.regY = ball.image.height / 2;
-      if (this.player_2_score.text === 3) {
-        player_2_win.x = (this.window.width() / 2) - 100;
-        player_2_win.y = this.window.height() / 2;
-        this.stage.addChild(player_2_win);
-        Tween.get(player_2_win).to({
-          y: (this.window.height() / 2) - 45
-        }, 500);
-        return this.reset_game();
+      if (this.single_player_mode) {
+        clearInterval(this.single_player_timer);
+        this.single_player_score($('#timer').html());
+        this.timer.stop();
+        return this.timer.reset();
+      } else {
+        this.player_2_score.text = parseInt(this.player_2_score.text + 1);
+        if (this.player_2_score.text === 3) {
+          player_2_win.x = (this.window.width() / 2) - 100;
+          player_2_win.y = this.window.height() / 2;
+          this.stage.addChild(player_2_win);
+          Tween.get(player_2_win).to({
+            y: (this.window.height() / 2) - 45
+          }, 500);
+          return this.reset_game();
+        }
       }
     };
 
     App.prototype.single_player_score = function(score) {
+      var html;
       if (score > this.score) {
-        $('.score_alert').html('NEW HIGH SCORE!').fadeIn(1000).delay(2500).fadeOut(1000, (function(_this) {
-          return function() {
-            return $(_this).html('');
-          };
-        })(this));
-        $('.high_score').html('HIGH SCORE: ' + score + ' SECONDS');
+        this.high_score.html('HIGH SCORE: ' + score + ' SECONDS');
+        html = 'NEW HIGH SCORE!';
       } else {
-        $('.score_alert').html('YOU SUCK!').fadeIn(1000).delay(2500).fadeOut(1000, (function(_this) {
-          return function() {
-            return $(_this).html('');
-          };
-        })(this));
-        $('.high_score').html('HIGH SCORE: ' + this.score + ' SECONDS');
+        this.high_score.html('HIGH SCORE: ' + this.score + ' SECONDS');
+        html = 'YOU SUCK!';
       }
+      this.score_alert.html(html).fadeIn(1000).delay(2500).fadeOut(1000, (function(_this) {
+        return function() {
+          return $(_this).html('');
+        };
+      })(this));
       return this.score = score;
     };
 
@@ -513,32 +604,125 @@
         this.player_2_score.y = 20;
         this.player_2_score.textAlign = 'left';
         this.stage.addChild(this.player_1_score, this.player_2_score);
+        player_1_win.onPress = (function(_this) {
+          return function() {
+            return _this.socket.emit('remove_win');
+          };
+        })(this);
+        this.socket.on('remove', function() {
+          return Tween.get(player_1_win).to({
+            y: -115
+          }, 300);
+        });
+        player_2_win.onPress = (function(_this) {
+          return function() {
+            return _this.socket.emit('remove_win');
+          };
+        })(this);
+        this.socket.on('remove', function() {
+          return Tween.get(player_2_win).to({
+            y: -115
+          }, 300);
+        });
       }
-      player_1_win.onPress = (function(_this) {
-        return function() {
-          return _this.socket.emit('remove_win');
-        };
-      })(this);
-      this.socket.on('remove', function() {
-        return Tween.get(player_1_win).to({
-          y: -115
-        }, 300);
-      });
-      player_2_win.onPress = (function(_this) {
-        return function() {
-          return _this.socket.emit('remove_win');
-        };
-      })(this);
-      this.socket.on('remove', function() {
-        return Tween.get(player_2_win).to({
-          y: -115
-        }, 300);
-      });
       return ball.onPress = (function(_this) {
         return function() {
-          return _this.socket.emit('ball_pressed');
+          if (_this.single_player_mode) {
+            return _this.start_game();
+          } else {
+            return _this.socket.emit('ball_pressed');
+          }
         };
       })(this);
+    };
+
+    App.prototype.increase_speed = function(axis) {
+      var speed;
+      speed = Math.floor((axis * -1.02) * 100) / 100;
+      return speed;
+    };
+
+    App.prototype.single_player_update = function() {
+      var ball_h, ball_height, ball_oh, ball_ow, ball_scale, ball_w, ball_width, player_h, player_height, player_oh, player_ow, player_scale, player_w, player_width;
+      ball.x = ball.x + this.x_speed;
+      ball.y = ball.y + this.y_speed;
+      player_2.y = ball.y;
+      player_w = this.window.width() / 5;
+      player_h = this.window.height() / 5;
+      player_ow = 145;
+      player_oh = 1129;
+      player_scale = Math.min(player_w / player_ow, player_h / player_oh);
+      player_width = player_1.image.width * player_scale;
+      player_height = player_1.image.height * player_scale;
+      ball_w = this.window.width() / 10;
+      ball_h = this.window.height() / 10;
+      ball_ow = 245;
+      ball_oh = 400;
+      ball_scale = Math.min(ball_w / ball_ow, ball_h / ball_oh);
+      ball_width = ball.image.width * ball_scale;
+      ball_height = ball.image.height * ball_scale;
+      if (ball.y <= ball_width / 2) {
+        this.y_speed = this.increase_speed(this.y_speed);
+        Tween.removeTweens(ball);
+        Tween.get(ball, {
+          loop: true
+        }).to({
+          rotation: -360
+        }, 1000);
+      }
+      if (ball.y >= this.window.height() - (ball_width / 2)) {
+        this.y_speed = this.increase_speed(this.y_speed);
+        Tween.removeTweens(ball);
+        Tween.get(ball, {
+          loop: true
+        }).to({
+          rotation: -360
+        }, 1000);
+      }
+      if (ball.x < player_width + (ball_width / 2) && ball.y > player_1.y - player_height / 2 && ball.y < player_1.y + (player_height / 2)) {
+        this.x_speed = this.increase_speed(this.x_speed);
+        Tween.removeTweens(ball);
+        Tween.get(ball, {
+          loop: true
+        }).to({
+          rotation: 360
+        }, 1000);
+      }
+      if (ball.x > this.window.width() - (player_width + (ball_width / 2)) && ball.y > player_2.y - (player_height / 2) && ball.y < player_2.y + (player_height / 2)) {
+        this.x_speed = this.increase_speed(this.x_speed);
+        Tween.removeTweens(ball);
+        Tween.get(ball, {
+          loop: true
+        }).to({
+          rotation: 360
+        }, 1000);
+      }
+      if (ball.x > this.window.width() - player_width) {
+        if (this.x_speed < 0) {
+          this.x_speed = 1;
+        } else {
+          this.x_speed = -1;
+        }
+        if (this.y_speed < 0) {
+          this.y_speed = 1.2;
+        } else {
+          this.y_speed = -1.2;
+        }
+        this.reset_game();
+      }
+      if (ball.x < 1) {
+        if (this.x_speed < 0) {
+          this.x_speed = 1;
+        } else {
+          this.x_speed = -1;
+        }
+        if (this.y_speed < 0) {
+          this.y_speed = 1.2;
+        } else {
+          this.y_speed = -1.2;
+        }
+        return this.player_two_score();
+      }
     };
 
     App.prototype.delay = function(time, fn, args) {
