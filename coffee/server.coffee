@@ -29,6 +29,7 @@ y_speed  = 1.2
 user_num = 0
 timer    = null
 users    = []
+sockets  = []
 
 io.sockets.on 'connection', ( socket ) =>
 
@@ -37,6 +38,11 @@ io.sockets.on 'connection', ( socket ) =>
 		user_num += 1
 
 		io.sockets.emit 'user_num', user_num
+
+		sockets.push socket.id
+
+		io.sockets.socket( sockets[1] ).emit 'disable_paddle_1'
+		io.sockets.socket( sockets[0] ).emit 'disable_paddle_2'
 
 		if user_num > 2 then io.sockets.socket( socket.id ).emit 'max_users', user
 
@@ -75,7 +81,7 @@ io.sockets.on 'connection', ( socket ) =>
 	socket.on 'move_1', ( percent ) ->
 
 		player_1.y = percent
-
+		
 		io.sockets.emit 'paddle_1', percent
 
 

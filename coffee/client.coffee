@@ -65,6 +65,8 @@ class App
 	y_speed             : null
 	single_player_mode  : true
 	single_player_timer : null
+	paddle_1_disabled   : false
+	paddle_2_disabled   : false
 
 	constructor: ->
 
@@ -79,7 +81,9 @@ class App
 		@high_score     = $ '#high_score'
 		@score_alert    = $ '#score_alert'
 
-		# @multiplayer.css top: ( @window.height() / 2 ) - 95
+		@x_speed = 12
+		@y_speed = 10
+
 		@single_player.css top: ( @window.height() / 2 ) + 5
 
 		@window.on 'touchmove', ( event ) -> event.preventDefault()
@@ -149,6 +153,9 @@ class App
 
 		@socket.on 'max_users', ( user ) => @too_many_users user
 
+		@socket.on 'disable_paddle_1', => @paddle_1_disabled = true
+		@socket.on 'disable_paddle_2', => @paddle_2_disabled = true
+
 
 	too_many_users: ( user ) ->
 
@@ -202,7 +209,7 @@ class App
 	add_title_view: ->
 
 		@single_player.animate opacity: 1
-		@multiplayer.animate opacity: 1
+		@multiplayer.animate   opacity: 1
 
 		@title_view = new Container()
 		@stage.addChild @title_view
@@ -235,7 +242,7 @@ class App
 		@stage.removeChild @title_view
 		@title_view = null
 
-		w     = @window.width() / 5
+		w     = @window.width()  / 5
 		h     = @window.height() / 5
 		ow    = 145
 		oh    = 1129
@@ -253,7 +260,7 @@ class App
 		player_2.y      = @window.height() / 2
 		player_2.regY   = player_2.image.height / 2
 
-		w     = @window.width() / 10
+		w     = @window.width()  / 10
 		h     = @window.height() / 10
 		ow    = 245
 		oh    = 400
@@ -262,10 +269,10 @@ class App
 		ball.scaleX = scale
 		ball.scaleY = scale
 
-		ball.x = @window.width() / 2
+		ball.x = @window.width()  / 2
 		ball.y = @window.height() / 2
 
-		ball.regX = ball.image.width / 2
+		ball.regX = ball.image.width  / 2
 		ball.regY = ball.image.height / 2
 
 		if @single_player_mode
@@ -288,9 +295,9 @@ class App
 
 		@pong_stage.animate opacity: 1, 500
 
-		@move_paddle_1()
-
-		if !@single_player_mode then @move_paddle_2()
+		if @single_player_mode is false
+			@move_paddle_1()
+			@move_paddle_2()
 
 		@paddle_events()
 		@trigger_game()
@@ -301,7 +308,7 @@ class App
 		ball.onPress = =>
 			if @single_player_mode then @start_game() else @socket.emit 'ball_pressed'
 		
-		if !@single_player_mode
+		if @single_player_mode is false
 			@socket.on 'game_started', =>
 				@start_game()
 
@@ -316,15 +323,18 @@ class App
 			percent = ( page_y / @window.height() ) * 100
 
 			if @single_player_mode	
-				@move_paddle_1 page_y
+				@single_player_paddle page_y
 			else
-				if page_x < @pong_stage.width() / 2 then @socket.emit 'move_1', percent
-				if page_x > @pong_stage.width() / 2 then @socket.emit 'move_2', percent
+				if @paddle_1_disabled is false
+					@socket.emit 'move_1', percent
+
+				if @paddle_2_disabled is false
+					@socket.emit 'move_2', percent
 
 
-	move_paddle_1: ( page_y ) ->
+	move_paddle_1: ->
 
-		if @single_player_mode
+		@socket.on 'paddle_1', ( percent ) =>
 
 			w     = @window.width() / 5
 			h     = @window.height() / 5
@@ -332,30 +342,13 @@ class App
 			oh    = 1129
 			scale = Math.min w / ow, h / oh
 
+			page_y     = ( percent / 100 ) * @window.height()
 			player_1.y = page_y
-			bottom     = @window.height() - ( ( player_1.image.height * scale ) / 2 )
+			bottom     = @window.height() - ( player_1.image.height * scale ) / 2
 			top        = ( player_1.image.height * scale ) / 2
 
 			if player_1.y >= bottom then player_1.y = bottom
 			if player_1.y <= top    then player_1.y = top
-
-		else
-
-			@socket.on 'paddle_1', ( percent ) =>
-
-				w     = @window.width() / 5
-				h     = @window.height() / 5
-				ow    = 145
-				oh    = 1129
-				scale = Math.min w / ow, h / oh
-
-				page_y     = ( percent / 100 ) * @window.height()
-				player_1.y = page_y
-				bottom     = @window.height() - ( ( player_1.image.height * scale ) / 2 )
-				top        = 0 + ( ( player_1.image.height * scale ) / 2 )
-
-				if player_1.y >= bottom then player_1.y = bottom
-				if player_1.y <= top    then player_1.y = top
 
 
 	move_paddle_2: ->
@@ -370,11 +363,27 @@ class App
 
 			page_y     = ( percent / 100 ) * @window.height()
 			player_2.y = page_y
-			bottom     = @window.height() - ( ( player_2.image.height * scale ) / 2 )
-			top        = 0 + ( ( player_2.image.height * scale ) / 2 )
+			bottom     = @window.height() - ( player_2.image.height * scale ) / 2
+			top        = ( player_2.image.height * scale ) / 2
 
 			if player_2.y >= bottom then player_2.y = bottom
 			if player_2.y <= top    then player_2.y = top
+
+
+	single_player_paddle: ( page_y ) ->
+
+		w     = @window.width()  / 5
+		h     = @window.height() / 5
+		ow    = 145
+		oh    = 1129
+		scale = Math.min w / ow, h / oh
+
+		player_1.y = page_y
+		bottom     = @window.height() - ( player_1.image.height * scale ) / 2
+		top        = ( player_1.image.height * scale ) / 2
+
+		if player_1.y >= bottom then player_1.y = bottom
+		if player_1.y <= top    then player_1.y = top
 
 
 	start_game: ->
@@ -382,9 +391,6 @@ class App
 		if @single_player_mode
 
 			@timer.start()
-
-			@x_speed = 12
-			@y_speed = 10
 
 			@single_player_timer = setInterval( =>
 				@single_player_update()
@@ -404,7 +410,7 @@ class App
 
 	tween_ball: ->
 
-		if !@single_player_mode
+		if @single_player_mode is false
 
 			@socket.on 'paddle_hit', ->
 
@@ -431,7 +437,7 @@ class App
 
 		if @player_1_score.text is 3
 
-			player_1_win.x = ( @window.width() / 2 ) - 100
+			player_1_win.x = ( @window.width()  / 2 ) - 100
 			player_1_win.y = ( @window.height() / 2 )
 
 			@stage.addChild player_1_win
@@ -461,7 +467,7 @@ class App
 
 			if @player_2_score.text is 3
 
-				player_2_win.x = ( @window.width() / 2 ) - 100
+				player_2_win.x = ( @window.width()  / 2 ) - 100
 				player_2_win.y = ( @window.height() / 2 )
 
 				@stage.addChild player_2_win
@@ -493,7 +499,7 @@ class App
 
 	reset_game: ->
 
-		if !@single_player_mode
+		if @single_player_mode is false
 
 			@stage.removeChild @player_1_score, @player_2_score
 
@@ -542,22 +548,22 @@ class App
 
 		player_2.y = ball.y
 
-		player_w     = @window.width() / 5
+		player_w     = @window.width()  / 5
 		player_h     = @window.height() / 5
 		player_ow    = 145
 		player_oh    = 1129
 		player_scale = Math.min player_w / player_ow, player_h / player_oh
 
-		player_width  = player_1.image.width * player_scale
+		player_width  = player_1.image.width  * player_scale
 		player_height = player_1.image.height * player_scale
 
-		ball_w     = @window.width() / 10
+		ball_w     = @window.width()  / 10
 		ball_h     = @window.height() / 10
 		ball_ow    = 245
 		ball_oh    = 400
 		ball_scale = Math.min ball_w / ball_ow, ball_h / ball_oh
 
-		ball_width  = ball.image.width * ball_scale
+		ball_width  = ball.image.width  * ball_scale
 		ball_height = ball.image.height * ball_scale
 
 		if ball.y <= ball_width / 2
@@ -580,14 +586,9 @@ class App
 			Tween.removeTweens ball
 			Tween.get( ball, loop: true ).to rotation: 360, 1000
 
-		if ball.x > @window.width() - player_width
-			if @x_speed < 0 then @x_speed = 1 else @x_speed = -1
-			if @y_speed < 0 then @y_speed = 1.2 else @y_speed = -1.2
-			@reset_game()
-
-		if ball.x < 1
-			if @x_speed < 0 then @x_speed = 1 else @x_speed = -1
-			if @y_speed < 0 then @y_speed = 1.2 else @y_speed = -1.2
+		if ball.x < player_width
+			if @y_speed < 0 then @y_speed = 10 else @y_speed = -10
+			@x_speed = 12
 			@player_two_score()
 
 
