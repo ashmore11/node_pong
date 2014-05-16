@@ -51,8 +51,8 @@
         user_num += 1;
         io.sockets.emit('user_num', user_num);
         sockets.push(socket.id);
-        io.sockets.socket(sockets[1]).emit('disable_paddle_1');
         io.sockets.socket(sockets[0]).emit('disable_paddle_2');
+        io.sockets.socket(sockets[1]).emit('disable_paddle_1');
         if (user_num > 2) {
           io.sockets.socket(socket.id).emit('max_users', user);
         }
@@ -65,7 +65,14 @@
         user_num -= 1;
         io.sockets.emit('user_num', user_num);
         return socket.get('username', function(err, user) {
+          var index;
           io.sockets.emit('user_disconnect', user);
+          index = users.indexOf(user);
+          users.splice(1, index);
+          index = sockets.indexOf(socket.id);
+          sockets.splice(1, index);
+          io.sockets.socket(sockets[0]).emit('disable_paddle_2');
+          io.sockets.socket(sockets[1]).emit('disable_paddle_1');
           return delete users[user];
         });
       });
@@ -88,7 +95,7 @@
         return player_2.y = y;
       });
       return socket.on('players_ready', function() {
-        return io.sockets.emit('start_game');
+        return io.sockets.emit('start_game', users);
       });
     };
   })(this));

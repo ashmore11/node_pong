@@ -50,6 +50,8 @@ class App
 	multiplayer         : null
 	user_div            : null
 	disconnect_div      : null
+	player_1_score      : null
+	player_2_score      : null
 	socket              : null
 	canvas              : null
 	stage               : null
@@ -78,6 +80,8 @@ class App
 		@max_users      = $ '#max_users'
 		@user_div       = $ '#user_div'
 		@disconnect_div = $ '#disconnect_div'
+		@player_1_score = $ '#player_1_score'
+		@player_2_score = $ '#player_2_score'
 		@high_score     = $ '#high_score'
 		@score_alert    = $ '#score_alert'
 
@@ -146,10 +150,10 @@ class App
 
 			if user_num is 2 then @socket.emit 'players_ready'
 
-			@socket.on 'start_game', => @players_ready()
+			@socket.on 'start_game', ( users ) => @players_ready users
 
-		@socket.on 'player_1_score', () => @player_one_score()
-		@socket.on 'player_2_score', () => @player_two_score()
+		@socket.on 'player_1_score', => @player_one_score()
+		@socket.on 'player_2_score', => @player_two_score()
 
 		@socket.on 'max_users', ( user ) => @too_many_users user
 
@@ -215,9 +219,12 @@ class App
 		@stage.addChild @title_view
 
 
-	players_ready: ->
+	players_ready: ( users ) ->
 
 		@single_player_mode = false
+
+		@player_1_score.find('.user').html users[0] + ' - '
+		@player_2_score.find('.user').html ' - ' + users[1]
 
 		@delay 1000, => @hide_title_view()
 
@@ -275,23 +282,13 @@ class App
 		ball.regX = ball.image.width  / 2
 		ball.regY = ball.image.height / 2
 
-		if @single_player_mode
+		if @single_player_mode is false
+			@player_1_score.animate opacity: 1
+			@player_2_score.animate opacity: 1
+			@player_1_score.css left: ( @window.width() / 2 ) - 315
+			@player_2_score.css left: ( @window.width() / 2 ) + 15
 
-			@stage.addChild player_1, player_2, ball
-
-		else
-
-			@player_1_score           = new Text '0', '20px Arial', '#FFF'
-			@player_1_score.x         = ( @window.width() / 2 ) - 15
-			@player_1_score.y         = 20
-			@player_1_score.textAlign = 'right'
-
-			@player_2_score           = new Text '0', '20px Arial', '#FFF'
-			@player_2_score.x         = ( @window.width() / 2 ) + 15
-			@player_2_score.y         = 20
-			@player_2_score.textAlign = 'left'
-
-			@stage.addChild @player_1_score, @player_2_score, player_1, player_2, ball
+		@stage.addChild player_1, player_2, ball
 
 		@pong_stage.animate opacity: 1, 500
 
@@ -428,14 +425,14 @@ class App
 		Tween.removeTweens ball
 		Tween.get( ball ).to rotation: 0, 1
 
-		@player_1_score.text = parseInt @player_1_score.text + 1
+		@player_1_score.find('.score').html parseInt( @player_1_score.find('.score').html() ) + 1
 
 		ball.x    = @window.width()   / 2
 		ball.y    = @window.height()  / 2
 		ball.regX = ball.image.width  / 2
 		ball.regY = ball.image.height / 2
 
-		if @player_1_score.text is 3
+		if @player_1_score.find('.score').html() is '3'
 
 			player_1_win.x = ( @window.width()  / 2 ) - 100
 			player_1_win.y = ( @window.height() / 2 )
@@ -463,9 +460,9 @@ class App
 
 		else
 
-			@player_2_score.text = parseInt @player_2_score.text + 1
+			@player_2_score.find('.score').html parseInt( @player_2_score.find('.score').html() ) + 1
 
-			if @player_2_score.text is 3
+			if @player_2_score.find('.score').html() is '3'
 
 				player_2_win.x = ( @window.width()  / 2 ) - 100
 				player_2_win.y = ( @window.height() / 2 )
@@ -501,19 +498,8 @@ class App
 
 		if @single_player_mode is false
 
-			@stage.removeChild @player_1_score, @player_2_score
-
-			@player_1_score           = new Text '0', '20px Arial', '#FFF'
-			@player_1_score.x         = ( @window.width() / 2 ) - 15
-			@player_1_score.y         = 20
-			@player_1_score.textAlign = 'right'
-
-			@player_2_score           = new Text '0', '20px Arial', '#FFF'
-			@player_2_score.x         = ( @window.width() / 2 ) + 15
-			@player_2_score.y         = 20
-			@player_2_score.textAlign = 'left'
-
-			@stage.addChild @player_1_score, @player_2_score
+			@player_1_score.find('.score').html '0'
+			@player_2_score.find('.score').html '0'
 
 			player_1_win.onPress = =>
 				@socket.emit 'remove_win'

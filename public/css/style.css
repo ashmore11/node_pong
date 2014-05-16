@@ -68,6 +68,34 @@
 	z-index: 1;
 }
 
+#player_1_score, #player_2_score {
+	position: absolute;
+	top: 10px;
+	font-family : 'Arial';
+	font-size   : 16px;
+	text-align: left;
+	color: white;
+	display: inline-block;
+	width: 300px;
+	opacity: 0;
+}
+
+.user, .score {
+	display: inline-block;
+}
+
+#player_1_score {
+	text-align: right;
+}
+
+#player_1_score .user {
+	margin-right: 5px;
+}
+
+#player_2_score .user {
+	margin-left: 5px;
+}
+
 #timer {
 	position    : absolute;
 	top         : 10px;

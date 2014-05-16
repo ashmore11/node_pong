@@ -41,8 +41,8 @@ io.sockets.on 'connection', ( socket ) =>
 
 		sockets.push socket.id
 
-		io.sockets.socket( sockets[1] ).emit 'disable_paddle_1'
 		io.sockets.socket( sockets[0] ).emit 'disable_paddle_2'
+		io.sockets.socket( sockets[1] ).emit 'disable_paddle_1'
 
 		if user_num > 2 then io.sockets.socket( socket.id ).emit 'max_users', user
 
@@ -62,6 +62,15 @@ io.sockets.on 'connection', ( socket ) =>
 		socket.get 'username', ( err, user ) ->
 
 			io.sockets.emit 'user_disconnect', user
+
+			index = users.indexOf user
+			users.splice 1, index
+
+			index = sockets.indexOf socket.id
+			sockets.splice 1, index
+
+			io.sockets.socket( sockets[0] ).emit 'disable_paddle_2'
+			io.sockets.socket( sockets[1] ).emit 'disable_paddle_1'
 
 			delete users[ user ]
 
@@ -99,7 +108,7 @@ io.sockets.on 'connection', ( socket ) =>
 
 	socket.on 'players_ready', ->
 
-		io.sockets.emit 'start_game'
+		io.sockets.emit 'start_game', users
 
 
 start_game = ->

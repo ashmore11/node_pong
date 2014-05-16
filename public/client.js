@@ -74,6 +74,10 @@
 
     App.prototype.disconnect_div = null;
 
+    App.prototype.player_1_score = null;
+
+    App.prototype.player_2_score = null;
+
     App.prototype.socket = null;
 
     App.prototype.canvas = null;
@@ -122,6 +126,8 @@
       this.max_users = $('#max_users');
       this.user_div = $('#user_div');
       this.disconnect_div = $('#disconnect_div');
+      this.player_1_score = $('#player_1_score');
+      this.player_2_score = $('#player_2_score');
       this.high_score = $('#high_score');
       this.score_alert = $('#score_alert');
       this.x_speed = 12;
@@ -195,8 +201,8 @@
           if (user_num === 2) {
             _this.socket.emit('players_ready');
           }
-          return _this.socket.on('start_game', function() {
-            return _this.players_ready();
+          return _this.socket.on('start_game', function(users) {
+            return _this.players_ready(users);
           });
         };
       })(this));
@@ -295,8 +301,10 @@
       return this.stage.addChild(this.title_view);
     };
 
-    App.prototype.players_ready = function() {
+    App.prototype.players_ready = function(users) {
       this.single_player_mode = false;
+      this.player_1_score.find('.user').html(users[0] + ' - ');
+      this.player_2_score.find('.user').html(' - ' + users[1]);
       return this.delay(1000, (function(_this) {
         return function() {
           return _this.hide_title_view();
@@ -370,19 +378,21 @@
       ball.y = this.window.height() / 2;
       ball.regX = ball.image.width / 2;
       ball.regY = ball.image.height / 2;
-      if (this.single_player_mode) {
-        this.stage.addChild(player_1, player_2, ball);
-      } else {
-        this.player_1_score = new Text('0', '20px Arial', '#FFF');
-        this.player_1_score.x = (this.window.width() / 2) - 15;
-        this.player_1_score.y = 20;
-        this.player_1_score.textAlign = 'right';
-        this.player_2_score = new Text('0', '20px Arial', '#FFF');
-        this.player_2_score.x = (this.window.width() / 2) + 15;
-        this.player_2_score.y = 20;
-        this.player_2_score.textAlign = 'left';
-        this.stage.addChild(this.player_1_score, this.player_2_score, player_1, player_2, ball);
+      if (this.single_player_mode === false) {
+        this.player_1_score.animate({
+          opacity: 1
+        });
+        this.player_2_score.animate({
+          opacity: 1
+        });
+        this.player_1_score.css({
+          left: (this.window.width() / 2) - 315
+        });
+        this.player_2_score.css({
+          left: (this.window.width() / 2) + 15
+        });
       }
+      this.stage.addChild(player_1, player_2, ball);
       this.pong_stage.animate({
         opacity: 1
       }, 500);
@@ -548,12 +558,12 @@
       Tween.get(ball).to({
         rotation: 0
       }, 1);
-      this.player_1_score.text = parseInt(this.player_1_score.text + 1);
+      this.player_1_score.find('.score').html(parseInt(this.player_1_score.find('.score').html()) + 1);
       ball.x = this.window.width() / 2;
       ball.y = this.window.height() / 2;
       ball.regX = ball.image.width / 2;
       ball.regY = ball.image.height / 2;
-      if (this.player_1_score.text === 3) {
+      if (this.player_1_score.find('.score').html() === '3') {
         player_1_win.x = (this.window.width() / 2) - 100;
         player_1_win.y = this.window.height() / 2;
         this.stage.addChild(player_1_win);
@@ -577,8 +587,8 @@
         this.timer.stop();
         return this.timer.reset();
       } else {
-        this.player_2_score.text = parseInt(this.player_2_score.text + 1);
-        if (this.player_2_score.text === 3) {
+        this.player_2_score.find('.score').html(parseInt(this.player_2_score.find('.score').html()) + 1);
+        if (this.player_2_score.find('.score').html() === '3') {
           player_2_win.x = (this.window.width() / 2) - 100;
           player_2_win.y = this.window.height() / 2;
           this.stage.addChild(player_2_win);
@@ -609,16 +619,8 @@
 
     App.prototype.reset_game = function() {
       if (this.single_player_mode === false) {
-        this.stage.removeChild(this.player_1_score, this.player_2_score);
-        this.player_1_score = new Text('0', '20px Arial', '#FFF');
-        this.player_1_score.x = (this.window.width() / 2) - 15;
-        this.player_1_score.y = 20;
-        this.player_1_score.textAlign = 'right';
-        this.player_2_score = new Text('0', '20px Arial', '#FFF');
-        this.player_2_score.x = (this.window.width() / 2) + 15;
-        this.player_2_score.y = 20;
-        this.player_2_score.textAlign = 'left';
-        this.stage.addChild(this.player_1_score, this.player_2_score);
+        this.player_1_score.find('.score').html('0');
+        this.player_2_score.find('.score').html('0');
         player_1_win.onPress = (function(_this) {
           return function() {
             return _this.socket.emit('remove_win');
