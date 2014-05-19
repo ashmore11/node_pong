@@ -69,6 +69,7 @@ class App
 	single_player_timer : null
 	paddle_1_disabled   : false
 	paddle_2_disabled   : false
+	player_limit        : false
 
 	constructor: ->
 
@@ -87,8 +88,6 @@ class App
 
 		@x_speed = 12
 		@y_speed = 10
-
-		@single_player.css top: ( @window.height() / 2 ) + 5
 
 		@window.on 'touchmove', ( event ) -> event.preventDefault()
 		@window.on 'resize', @on_resize()
@@ -123,6 +122,8 @@ class App
 
 			@socket.on 'updateusers', ( user ) =>
 
+				@on_resize()
+
 				html = user + ' has joined the game!'
 
 				@user_div
@@ -141,24 +142,33 @@ class App
 					.delay   1000
 					.fadeOut 1000, => $( @ ).html ''
 
-				@reset_game()
-
-				@single_player.show -> $( @ ).animate opacity: 1
-				@multiplayer.show   -> $( @ ).animate opacity: 1
-
 		@socket.on 'user_num', ( user_num ) =>
 
-			if user_num is 2 then @socket.emit 'players_ready'
+			if user_num > 1 then @socket.emit 'players_ready'
 
-			@socket.on 'start_game', ( users ) => @players_ready users
+			if user_num < 2
 
-		@socket.on 'player_1_score', => @player_one_score()
-		@socket.on 'player_2_score', => @player_two_score()
+				@reset_game()
 
-		@socket.on 'max_users', ( user ) => @too_many_users user
+				@pong_stage.animate opacity: 1
 
-		@socket.on 'disable_paddle_1', => @paddle_1_disabled = true
-		@socket.on 'disable_paddle_2', => @paddle_2_disabled = true
+				@player_1_score.animate opacity: 0
+				@player_2_score.animate opacity: 0
+
+				@single_player.show -> $( @ ).animate opacity: 1
+				@wait.show -> $( @ ).animate opacity: 1
+
+		
+		@socket.on 'start_game', ( users ) => @players_ready users
+		@socket.on 'player_1_score',       => @player_one_score()
+		@socket.on 'player_2_score',       => @player_two_score()
+		@socket.on 'max_users', ( user )   => @too_many_users user
+
+		@socket.on 'assign_user', ( i ) =>
+
+			if i is 0 then @paddle_2_disabled = true else @paddle_2_disabled = false
+			if i is 1 then @paddle_1_disabled = true else @paddle_1_disabled = false
+			if i  > 1 then @player_limit      = true else @player_limit      = false
 
 
 	too_many_users: ( user ) ->
@@ -221,8 +231,6 @@ class App
 
 	players_ready: ( users ) ->
 
-		@single_player_mode = false
-
 		@player_1_score.find('.user').html users[0] + ' - '
 		@player_2_score.find('.user').html ' - ' + users[1]
 
@@ -232,9 +240,13 @@ class App
 	hide_title_view: =>
 
 		@multiplayer.animate opacity: 0,   -> $( @ ).hide()
-		@single_player.animate opacity: 0, -> $( @ ).hide()
 		@wait.animate opacity: 0,          -> $( @ ).hide()
-		@max_users.animate opacity: 0,     -> $( @ ).hide()
+		@single_player.animate opacity: 0, -> $( @ ).hide()
+
+		if @player_limit is false
+			@max_users.animate opacity: 0, -> $( @ ).hide()
+
+		@max_users.animate top: @window.height() - 15
 		
 		if @title_view != null
 			Tween.get( @title_view ).to y: -( ( @window.height() / 2 ) + 45 ), 500
@@ -293,8 +305,7 @@ class App
 		@pong_stage.animate opacity: 1, 500
 
 		if @single_player_mode is false
-			@move_paddle_1()
-			@move_paddle_2()
+			@move_paddles()
 
 		@paddle_events()
 		@trigger_game()
@@ -312,32 +323,34 @@ class App
 
 	paddle_events: ->
 
-		@window.on 'touchstart touchmove mousedown mousemove', ( event ) =>
+		if @player_limit is false
 
-			page_y = event.originalEvent.pageY
-			page_x = event.originalEvent.pageX
+			@window.on 'touchstart touchmove mousedown mousemove', ( event ) =>
 
-			percent = ( page_y / @window.height() ) * 100
+				page_y = event.originalEvent.pageY
+				page_x = event.originalEvent.pageX
 
-			if @single_player_mode	
-				@single_player_paddle page_y
-			else
-				if @paddle_1_disabled is false
-					@socket.emit 'move_1', percent
+				percent = ( page_y / @window.height() ) * 100
 
-				if @paddle_2_disabled is false
-					@socket.emit 'move_2', percent
+				if @single_player_mode	
+					@single_player_paddle page_y
+				else
+					if @paddle_1_disabled is false
+						@socket.emit 'move_1', percent
+
+					if @paddle_2_disabled is false
+						@socket.emit 'move_2', percent
 
 
-	move_paddle_1: ->
+	move_paddles: ->
+
+		w     = @window.width() / 5
+		h     = @window.height() / 5
+		ow    = 145
+		oh    = 1129
+		scale = Math.min w / ow, h / oh
 
 		@socket.on 'paddle_1', ( percent ) =>
-
-			w     = @window.width() / 5
-			h     = @window.height() / 5
-			ow    = 145
-			oh    = 1129
-			scale = Math.min w / ow, h / oh
 
 			page_y     = ( percent / 100 ) * @window.height()
 			player_1.y = page_y
@@ -347,16 +360,7 @@ class App
 			if player_1.y >= bottom then player_1.y = bottom
 			if player_1.y <= top    then player_1.y = top
 
-
-	move_paddle_2: ->
-
 		@socket.on 'paddle_2', ( percent ) =>
-
-			w     = @window.width() / 5
-			h     = @window.height() / 5
-			ow    = 145
-			oh    = 1129
-			scale = Math.min w / ow, h / oh
 
 			page_y     = ( percent / 100 ) * @window.height()
 			player_2.y = page_y
@@ -395,6 +399,8 @@ class App
 
 		else
 
+			@tween_ball()
+
 			@socket.on 'ballmove', ( x , y ) =>
 				
 				ball.x = ( x / 100 ) * @window.width()
@@ -402,22 +408,18 @@ class App
 
 		Tween.get( ball, loop: true ).to rotation: 360, 1000
 
-		@tween_ball()
-
 
 	tween_ball: ->
 
-		if @single_player_mode is false
+		@socket.on 'paddle_hit', ->
 
-			@socket.on 'paddle_hit', ->
+			Tween.removeTweens ball
+			Tween.get( ball, loop: true ).to rotation: 360, 1000
 
-				Tween.removeTweens ball
-				Tween.get( ball, loop: true ).to rotation: 360, 1000
+		@socket.on 'wall_hit', ->
 
-			@socket.on 'wall_hit', ->
-
-				Tween.removeTweens ball
-				Tween.get( ball, loop: true ).to rotation: -360, 1000
+			Tween.removeTweens ball
+			Tween.get( ball, loop: true ).to rotation: -360, 1000
 
 
 	player_one_score: =>
@@ -454,6 +456,7 @@ class App
 		if @single_player_mode
 
 			clearInterval @single_player_timer
+			@single_player_timer = null
 			@single_player_score $('#timer').html()
 			@timer.stop()
 			@timer.reset()
@@ -585,7 +588,7 @@ class App
 
 	on_resize: ->
 
-		$('body').animate scrollTop: 0, 1000
+		$('body').animate scrollTop: 0, 10
 
 
 $ -> app = new App

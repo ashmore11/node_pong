@@ -112,6 +112,8 @@
 
     App.prototype.paddle_2_disabled = false;
 
+    App.prototype.player_limit = false;
+
     function App() {
       this.player_two_score = __bind(this.player_two_score, this);
       this.player_one_score = __bind(this.player_one_score, this);
@@ -132,9 +134,6 @@
       this.score_alert = $('#score_alert');
       this.x_speed = 12;
       this.y_speed = 10;
-      this.single_player.css({
-        top: (this.window.height() / 2) + 5
-      });
       this.window.on('touchmove', function(event) {
         return event.preventDefault();
       });
@@ -171,6 +170,7 @@
           _this.socket.emit('adduser', prompt("What's your name?"));
           _this.socket.on('updateusers', function(user) {
             var html;
+            _this.on_resize();
             html = user + ' has joined the game!';
             return _this.user_div.html(html).fadeIn(1000).delay(1000).fadeOut(1000, function() {
               return $(_this).html('');
@@ -179,31 +179,44 @@
           return _this.socket.on('user_disconnect', function(user) {
             var html;
             html = user + ' has disconnected...';
-            _this.disconnect_div.html(html).fadeIn(1000).delay(1000).fadeOut(1000, function() {
+            return _this.disconnect_div.html(html).fadeIn(1000).delay(1000).fadeOut(1000, function() {
               return $(_this).html('');
-            });
-            _this.reset_game();
-            _this.single_player.show(function() {
-              return $(this).animate({
-                opacity: 1
-              });
-            });
-            return _this.multiplayer.show(function() {
-              return $(this).animate({
-                opacity: 1
-              });
             });
           });
         };
       })(this));
       this.socket.on('user_num', (function(_this) {
         return function(user_num) {
-          if (user_num === 2) {
+          if (user_num > 1) {
             _this.socket.emit('players_ready');
           }
-          return _this.socket.on('start_game', function(users) {
-            return _this.players_ready(users);
-          });
+          if (user_num < 2) {
+            _this.reset_game();
+            _this.pong_stage.animate({
+              opacity: 1
+            });
+            _this.player_1_score.animate({
+              opacity: 0
+            });
+            _this.player_2_score.animate({
+              opacity: 0
+            });
+            _this.single_player.show(function() {
+              return $(this).animate({
+                opacity: 1
+              });
+            });
+            return _this.wait.show(function() {
+              return $(this).animate({
+                opacity: 1
+              });
+            });
+          }
+        };
+      })(this));
+      this.socket.on('start_game', (function(_this) {
+        return function(users) {
+          return _this.players_ready(users);
         };
       })(this));
       this.socket.on('player_1_score', (function(_this) {
@@ -221,14 +234,23 @@
           return _this.too_many_users(user);
         };
       })(this));
-      this.socket.on('disable_paddle_1', (function(_this) {
-        return function() {
-          return _this.paddle_1_disabled = true;
-        };
-      })(this));
-      return this.socket.on('disable_paddle_2', (function(_this) {
-        return function() {
-          return _this.paddle_2_disabled = true;
+      return this.socket.on('assign_user', (function(_this) {
+        return function(i) {
+          if (i === 0) {
+            _this.paddle_2_disabled = true;
+          } else {
+            _this.paddle_2_disabled = false;
+          }
+          if (i === 1) {
+            _this.paddle_1_disabled = true;
+          } else {
+            _this.paddle_1_disabled = false;
+          }
+          if (i > 1) {
+            return _this.player_limit = true;
+          } else {
+            return _this.player_limit = false;
+          }
         };
       })(this));
     };
@@ -302,7 +324,6 @@
     };
 
     App.prototype.players_ready = function(users) {
-      this.single_player_mode = false;
       this.player_1_score.find('.user').html(users[0] + ' - ');
       this.player_2_score.find('.user').html(' - ' + users[1]);
       return this.delay(1000, (function(_this) {
@@ -318,20 +339,25 @@
       }, function() {
         return $(this).hide();
       });
-      this.single_player.animate({
-        opacity: 0
-      }, function() {
-        return $(this).hide();
-      });
       this.wait.animate({
         opacity: 0
       }, function() {
         return $(this).hide();
       });
-      this.max_users.animate({
+      this.single_player.animate({
         opacity: 0
       }, function() {
         return $(this).hide();
+      });
+      if (this.player_limit === false) {
+        this.max_users.animate({
+          opacity: 0
+        }, function() {
+          return $(this).hide();
+        });
+      }
+      this.max_users.animate({
+        top: this.window.height() - 15
       });
       if (this.title_view !== null) {
         Tween.get(this.title_view).to({
@@ -397,8 +423,7 @@
         opacity: 1
       }, 500);
       if (this.single_player_mode === false) {
-        this.move_paddle_1();
-        this.move_paddle_2();
+        this.move_paddles();
       }
       this.paddle_events();
       return this.trigger_game();
@@ -424,35 +449,38 @@
     };
 
     App.prototype.paddle_events = function() {
-      return this.window.on('touchstart touchmove mousedown mousemove', (function(_this) {
-        return function(event) {
-          var page_x, page_y, percent;
-          page_y = event.originalEvent.pageY;
-          page_x = event.originalEvent.pageX;
-          percent = (page_y / _this.window.height()) * 100;
-          if (_this.single_player_mode) {
-            return _this.single_player_paddle(page_y);
-          } else {
-            if (_this.paddle_1_disabled === false) {
-              _this.socket.emit('move_1', percent);
+      if (this.player_limit === false) {
+        return this.window.on('touchstart touchmove mousedown mousemove', (function(_this) {
+          return function(event) {
+            var page_x, page_y, percent;
+            page_y = event.originalEvent.pageY;
+            page_x = event.originalEvent.pageX;
+            percent = (page_y / _this.window.height()) * 100;
+            if (_this.single_player_mode) {
+              return _this.single_player_paddle(page_y);
+            } else {
+              if (_this.paddle_1_disabled === false) {
+                _this.socket.emit('move_1', percent);
+              }
+              if (_this.paddle_2_disabled === false) {
+                return _this.socket.emit('move_2', percent);
+              }
             }
-            if (_this.paddle_2_disabled === false) {
-              return _this.socket.emit('move_2', percent);
-            }
-          }
-        };
-      })(this));
+          };
+        })(this));
+      }
     };
 
-    App.prototype.move_paddle_1 = function() {
-      return this.socket.on('paddle_1', (function(_this) {
+    App.prototype.move_paddles = function() {
+      var h, oh, ow, scale, w;
+      w = this.window.width() / 5;
+      h = this.window.height() / 5;
+      ow = 145;
+      oh = 1129;
+      scale = Math.min(w / ow, h / oh);
+      this.socket.on('paddle_1', (function(_this) {
         return function(percent) {
-          var bottom, h, oh, ow, page_y, scale, top, w;
-          w = _this.window.width() / 5;
-          h = _this.window.height() / 5;
-          ow = 145;
-          oh = 1129;
-          scale = Math.min(w / ow, h / oh);
+          var bottom, page_y, top;
           page_y = (percent / 100) * _this.window.height();
           player_1.y = page_y;
           bottom = _this.window.height() - (player_1.image.height * scale) / 2;
@@ -465,17 +493,9 @@
           }
         };
       })(this));
-    };
-
-    App.prototype.move_paddle_2 = function() {
       return this.socket.on('paddle_2', (function(_this) {
         return function(percent) {
-          var bottom, h, oh, ow, page_y, scale, top, w;
-          w = _this.window.width() / 5;
-          h = _this.window.height() / 5;
-          ow = 145;
-          oh = 1129;
-          scale = Math.min(w / ow, h / oh);
+          var bottom, page_y, top;
           page_y = (percent / 100) * _this.window.height();
           player_2.y = page_y;
           bottom = _this.window.height() - (player_2.image.height * scale) / 2;
@@ -517,6 +537,7 @@
           };
         })(this), 15);
       } else {
+        this.tween_ball();
         this.socket.on('ballmove', (function(_this) {
           return function(x, y) {
             ball.x = (x / 100) * _this.window.width();
@@ -524,33 +545,30 @@
           };
         })(this));
       }
-      Tween.get(ball, {
+      return Tween.get(ball, {
         loop: true
       }).to({
         rotation: 360
       }, 1000);
-      return this.tween_ball();
     };
 
     App.prototype.tween_ball = function() {
-      if (this.single_player_mode === false) {
-        this.socket.on('paddle_hit', function() {
-          Tween.removeTweens(ball);
-          return Tween.get(ball, {
-            loop: true
-          }).to({
-            rotation: 360
-          }, 1000);
-        });
-        return this.socket.on('wall_hit', function() {
-          Tween.removeTweens(ball);
-          return Tween.get(ball, {
-            loop: true
-          }).to({
-            rotation: -360
-          }, 1000);
-        });
-      }
+      this.socket.on('paddle_hit', function() {
+        Tween.removeTweens(ball);
+        return Tween.get(ball, {
+          loop: true
+        }).to({
+          rotation: 360
+        }, 1000);
+      });
+      return this.socket.on('wall_hit', function() {
+        Tween.removeTweens(ball);
+        return Tween.get(ball, {
+          loop: true
+        }).to({
+          rotation: -360
+        }, 1000);
+      });
     };
 
     App.prototype.player_one_score = function() {
@@ -583,6 +601,7 @@
       ball.y = this.window.height() / 2;
       if (this.single_player_mode) {
         clearInterval(this.single_player_timer);
+        this.single_player_timer = null;
         this.single_player_score($('#timer').html());
         this.timer.stop();
         return this.timer.reset();
@@ -732,7 +751,7 @@
     App.prototype.on_resize = function() {
       return $('body').animate({
         scrollTop: 0
-      }, 1000);
+      }, 10);
     };
 
     return App;

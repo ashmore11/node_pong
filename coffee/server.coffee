@@ -41,8 +41,10 @@ io.sockets.on 'connection', ( socket ) =>
 
 		sockets.push socket.id
 
-		io.sockets.socket( sockets[0] ).emit 'disable_paddle_2'
-		io.sockets.socket( sockets[1] ).emit 'disable_paddle_1'
+		i = 0
+		while i < sockets.length
+			io.sockets.socket( sockets[i] ).emit 'assign_user', i
+			i++
 
 		if user_num > 2 then io.sockets.socket( socket.id ).emit 'max_users', user
 
@@ -63,16 +65,18 @@ io.sockets.on 'connection', ( socket ) =>
 
 			io.sockets.emit 'user_disconnect', user
 
-			index = users.indexOf user
-			users.splice 1, index
-
-			index = sockets.indexOf socket.id
-			sockets.splice 1, index
-
-			io.sockets.socket( sockets[0] ).emit 'disable_paddle_2'
-			io.sockets.socket( sockets[1] ).emit 'disable_paddle_1'
+			i = users.indexOf user
+			if i > -1 then users.splice i, 1
 
 			delete users[ user ]
+
+			j = sockets.indexOf socket.id
+			if j > -1 then sockets.splice j, 1
+
+			i = 0
+			while i < sockets.length
+				io.sockets.socket( sockets[i] ).emit 'assign_user', i
+				i++
 
 
 	socket.on 'ball_pressed', ->
