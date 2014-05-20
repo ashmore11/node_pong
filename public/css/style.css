@@ -1,7 +1,11 @@
 * {
 	-webkit-tap-highlight-color : rgba(0, 0, 0, 0);
-	padding : 0;
-	margin  : 0;
+	-webkit-font-smoothing      : antialiased;
+	-webkit-text-size-adjust    : 100%;
+
+	font-family : 'Arial';
+	padding     : 0;
+	margin      : 0;
 }
 
 #PongStage {
@@ -17,6 +21,37 @@
 	height   : 100%;
 }
 
+#create_user {
+	position    : absolute;
+	left        : 50%;
+	top         : 50%;
+	width       : 283px;
+	height      : 90px;
+	margin-left : -141px;
+	margin-top  : -95px;
+	z-index     : 5;
+	display     : none;
+	opacity     : 0;
+}
+
+#user_input {
+	width       : 100%;
+	height      : 100%;
+	background  : rgba(0,0,0,0.8);
+	border      : 2px solid #333;
+	color       : white;
+	text-align  : center;
+	font-size   : 36px;
+	font-weight : bold;
+}
+
+#submit {
+	width   : 60px;
+	display : block;
+	margin  : 20px auto 0;
+	cursor  : pointer; 
+}
+
 #user_div, #disconnect_div {
 	position    : absolute;
 	bottom      : 15px;
@@ -24,11 +59,20 @@
 	margin-left : -160px;
 	width       : 320px;
 	text-align  : center;
-	font-family : 'Arial';
 	font-size   : 16px;
 	color       : #FFF;
 	z-index     : 2;
 	display     : none;
+}
+
+#wait_list {
+	position   : absolute;
+	font-size  : 16px;
+	bottom     : 5px;
+	left       : 0;
+	width      : 100%;
+	text-align : center;
+	color      : white;
 }
 
 #background {
@@ -58,6 +102,10 @@
 	margin-top: -95px;
 }
 
+#max_users {
+	margin-top: -45px;
+}
+
 #wait {
 	cursor: default;
 	z-index: 2;
@@ -71,7 +119,6 @@
 #player_1_score, #player_2_score {
 	position: absolute;
 	top: 10px;
-	font-family : 'Arial';
 	font-size   : 16px;
 	text-align: left;
 	color: white;
@@ -80,45 +127,21 @@
 	opacity: 0;
 }
 
-.user, .score {
-	display: inline-block;
-}
+.user, .score         { display: inline-block; }
+#player_1_score       { text-align: right; }
+#player_1_score .user { margin-right: 5px; }
+#player_2_score .user { margin-left: 5px; }
 
-#player_1_score {
-	text-align: right;
-}
-
-#player_1_score .user {
-	margin-right: 5px;
-}
-
-#player_2_score .user {
-	margin-left: 5px;
-}
-
-#timer {
+#timer, #score_alert, #high_score {
 	position    : absolute;
-	top         : 10px;
 	left        : 0;
 	width       : 100%;
-	font-family : 'Arial';
 	font-size   : 14px;
 	text-align  : center;
 	color       : white;
 }
 
-#score_alert, #high_score {
-	position    : absolute;
-	bottom      : 10px;
-	left        : 0;
-	width       : 100%;
-	font-family : 'Arial';
-	font-size   : 14px;
-	text-align  : center;
-	color       : white;
-}
-
-#score_alert {
-	bottom : 30px;
-}
+#timer       { top    : 10px; }
+#high_score  { bottom : 10px; }
+#score_alert { bottom : 30px; }
 

@@ -35,10 +35,6 @@ io.sockets.on 'connection', ( socket ) =>
 
 	socket.on 'adduser', ( user ) ->
 
-		user_num += 1
-
-		io.sockets.emit 'user_num', user_num
-
 		sockets.push socket.id
 
 		i = 0
@@ -46,29 +42,25 @@ io.sockets.on 'connection', ( socket ) =>
 			io.sockets.socket( sockets[i] ).emit 'assign_user', i
 			i++
 
-		if user_num > 2 then io.sockets.socket( socket.id ).emit 'max_users', user
-
 		socket.set 'username', user, ->
 
 			users.push user
 
-			io.sockets.emit 'updateusers', user
+			user_num += 1
+
+			if user_num > 2 then io.sockets.socket( socket.id ).emit 'max_users'
+
+			io.sockets.emit 'user_num', user_num, users
 
 
 	socket.on 'disconnect', ->
 
-		user_num -= 1
-
-		io.sockets.emit 'user_num', user_num
-
 		socket.get 'username', ( err, user ) ->
-
-			io.sockets.emit 'user_disconnect', user
 
 			i = users.indexOf user
 			if i > -1 then users.splice i, 1
 
-			delete users[ user ]
+			if i is 0 or i is 1 then io.sockets.emit 'reset_score'
 
 			j = sockets.indexOf socket.id
 			if j > -1 then sockets.splice j, 1
@@ -77,6 +69,12 @@ io.sockets.on 'connection', ( socket ) =>
 			while i < sockets.length
 				io.sockets.socket( sockets[i] ).emit 'assign_user', i
 				i++
+
+			user_num -= 1
+
+			io.sockets.emit 'user_num', user_num, users
+
+			delete users[ user ]
 
 
 	socket.on 'ball_pressed', ->
@@ -108,11 +106,6 @@ io.sockets.on 'connection', ( socket ) =>
 	socket.on 'single_player_mode', ( y ) ->
 
 		player_2.y = y
-
-
-	socket.on 'players_ready', ->
-
-		io.sockets.emit 'start_game', users
 
 
 start_game = ->

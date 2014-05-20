@@ -49,44 +49,43 @@
     return function(socket) {
       socket.on('adduser', function(user) {
         var i;
-        user_num += 1;
-        io.sockets.emit('user_num', user_num);
         sockets.push(socket.id);
         i = 0;
         while (i < sockets.length) {
           io.sockets.socket(sockets[i]).emit('assign_user', i);
           i++;
         }
-        if (user_num > 2) {
-          io.sockets.socket(socket.id).emit('max_users', user);
-        }
         return socket.set('username', user, function() {
           users.push(user);
-          return io.sockets.emit('updateusers', user);
+          user_num += 1;
+          if (user_num > 2) {
+            io.sockets.socket(socket.id).emit('max_users');
+          }
+          return io.sockets.emit('user_num', user_num, users);
         });
       });
       socket.on('disconnect', function() {
-        user_num -= 1;
-        io.sockets.emit('user_num', user_num);
         return socket.get('username', function(err, user) {
-          var i, j, _results;
-          io.sockets.emit('user_disconnect', user);
+          var i, j;
           i = users.indexOf(user);
           if (i > -1) {
             users.splice(i, 1);
           }
-          delete users[user];
+          if (i === 0 || i === 1) {
+            io.sockets.emit('reset_score');
+          }
           j = sockets.indexOf(socket.id);
           if (j > -1) {
             sockets.splice(j, 1);
           }
           i = 0;
-          _results = [];
           while (i < sockets.length) {
             io.sockets.socket(sockets[i]).emit('assign_user', i);
-            _results.push(i++);
+            i++;
           }
-          return _results;
+          user_num -= 1;
+          io.sockets.emit('user_num', user_num, users);
+          return delete users[user];
         });
       });
       socket.on('ball_pressed', function() {
@@ -104,11 +103,8 @@
         player_2.y = percent;
         return io.sockets.emit('paddle_2', percent);
       });
-      socket.on('single_player_mode', function(y) {
+      return socket.on('single_player_mode', function(y) {
         return player_2.y = y;
-      });
-      return socket.on('players_ready', function() {
-        return io.sockets.emit('start_game', users);
       });
     };
   })(this));

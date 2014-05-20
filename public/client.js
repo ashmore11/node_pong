@@ -114,6 +114,12 @@
 
     App.prototype.player_limit = false;
 
+    App.prototype.create_user = null;
+
+    App.prototype.submit = null;
+
+    App.prototype.user_input = null;
+
     function App() {
       this.player_two_score = __bind(this.player_two_score, this);
       this.player_one_score = __bind(this.player_one_score, this);
@@ -132,6 +138,9 @@
       this.player_2_score = $('#player_2_score');
       this.high_score = $('#high_score');
       this.score_alert = $('#score_alert');
+      this.create_user = $('#create_user');
+      this.submit = $('#submit');
+      this.user_input = $('#user_input');
       this.x_speed = 12;
       this.y_speed = 10;
       this.window.on('touchmove', function(event) {
@@ -142,7 +151,8 @@
       this.multiplayer.on('click', (function(_this) {
         return function() {
           _this.single_player_mode = false;
-          return _this.handle_users();
+          _this.handle_animations();
+          return _this.add_user();
         };
       })(this));
       this.single_player.on('click', (function(_this) {
@@ -154,69 +164,105 @@
       })(this));
     }
 
-    App.prototype.handle_users = function() {
-      this.socket = io.connect('http://scott.local:3700');
-      this.socket.on('connect', (function(_this) {
+    App.prototype.handle_animations = function() {
+      this.multiplayer.animate({
+        opacity: 0
+      }, function() {
+        return $(this).hide();
+      });
+      this.single_player.animate({
+        opacity: 0
+      }, function() {
+        return $(this).hide();
+      });
+      this.wait.animate({
+        opacity: 0
+      }, function() {
+        return $(this).hide();
+      });
+      this.create_user.show(function() {
+        return $(this).animate({
+          opacity: 1
+        });
+      });
+      this.user_input.css({
+        color: 'rgba(255,255,255,0.2)'
+      }).val('Username');
+      return this.user_input.on('focus', function() {
+        return $(this).css({
+          color: 'rgba(255,255,255,1)'
+        }).val('');
+      });
+    };
+
+    App.prototype.add_user = function() {
+      this.submit.on('click', (function(_this) {
         return function() {
-          _this.multiplayer.animate({
+          var user;
+          if (_this.user_input.val() === '' || _this.user_input.val() === 'Username') {
+            return;
+          }
+          _this.create_user.animate({
             opacity: 0
           }, function() {
             return $(this).hide();
           });
-          _this.wait.animate({
-            opacity: 1,
-            marginTop: -95
-          }, 1000);
-          _this.socket.emit('adduser', prompt("What's your name?"));
-          _this.socket.on('updateusers', function(user) {
-            var html;
-            _this.on_resize();
-            html = user + ' has joined the game!';
-            return _this.user_div.html(html).fadeIn(1000).delay(1000).fadeOut(1000, function() {
-              return $(_this).html('');
-            });
-          });
-          return _this.socket.on('user_disconnect', function(user) {
-            var html;
-            html = user + ' has disconnected...';
-            return _this.disconnect_div.html(html).fadeIn(1000).delay(1000).fadeOut(1000, function() {
-              return $(_this).html('');
-            });
-          });
+          user = _this.user_input.val();
+          _this.handle_users(user);
+          return _this.on_resize();
         };
       })(this));
-      this.socket.on('user_num', (function(_this) {
-        return function(user_num) {
-          if (user_num > 1) {
-            _this.socket.emit('players_ready');
-          }
-          if (user_num < 2) {
-            _this.reset_game();
-            _this.pong_stage.animate({
-              opacity: 1
-            });
-            _this.player_1_score.animate({
+      return this.user_input.on('keyup', (function(_this) {
+        return function(event) {
+          var user;
+          if (event.keyCode === 13) {
+            if (_this.user_input.val() === '' || _this.user_input.val() === 'Username') {
+              return;
+            }
+            _this.create_user.animate({
               opacity: 0
+            }, function() {
+              return $(this).hide();
             });
-            _this.player_2_score.animate({
-              opacity: 0
-            });
-            _this.single_player.show(function() {
-              return $(this).animate({
-                opacity: 1
-              });
-            });
-            return _this.wait.show(function() {
-              return $(this).animate({
-                opacity: 1
-              });
-            });
+            user = _this.user_input.val();
+            return _this.handle_users(user);
           }
         };
       })(this));
-      this.socket.on('start_game', (function(_this) {
-        return function(users) {
-          return _this.players_ready(users);
+    };
+
+    App.prototype.handle_users = function(user) {
+      this.socket = io.connect('http://scott.local:3700');
+      this.socket.on('connect', (function(_this) {
+        return function() {
+          _this.socket.emit('adduser', user);
+          return _this.socket.on('user_num', function(user_num, users) {
+            if (user_num > 1) {
+              _this.players_ready(users);
+            }
+            if (user_num < 2) {
+              _this.pong_stage.animate({
+                opacity: 0
+              });
+              _this.player_1_score.animate({
+                opacity: 0
+              });
+              _this.player_2_score.animate({
+                opacity: 0
+              });
+              _this.wait.show(function() {
+                return $(this).animate({
+                  opacity: 1
+                });
+              });
+              _this.single_player.show(function() {
+                return $(this).animate({
+                  opacity: 1
+                });
+              });
+              return _this.reset_game();
+            }
+          });
         };
       })(this));
       this.socket.on('player_1_score', (function(_this) {
@@ -230,8 +276,14 @@
         };
       })(this));
       this.socket.on('max_users', (function(_this) {
-        return function(user) {
-          return _this.too_many_users(user);
+        return function() {
+          return _this.too_many_users();
+        };
+      })(this));
+      this.socket.on('reset_score', (function(_this) {
+        return function() {
+          _this.player_1_score.find('.score').html('0');
+          return _this.player_2_score.find('.score').html('0');
         };
       })(this));
       return this.socket.on('assign_user', (function(_this) {
@@ -255,7 +307,7 @@
       })(this));
     };
 
-    App.prototype.too_many_users = function(user) {
+    App.prototype.too_many_users = function() {
       this.wait.hide();
       return this.max_users.show().animate({
         opacity: 1
@@ -324,6 +376,21 @@
     };
 
     App.prototype.players_ready = function(users) {
+      var com, i, user, _i, _len;
+      if (users.length > 1) {
+        $('#wait_list').html('Player Queue:  ');
+      }
+      for (i = _i = 0, _len = users.length; _i < _len; i = ++_i) {
+        user = users[i];
+        if (i === users.length - 1) {
+          com = '';
+        } else {
+          com = ', ';
+        }
+        if (i > 1) {
+          $('#wait_list').append(i - 1 + ': ' + user + com);
+        }
+      }
       this.player_1_score.find('.user').html(users[0] + ' - ');
       this.player_2_score.find('.user').html(' - ' + users[1]);
       return this.delay(1000, (function(_this) {
@@ -355,10 +422,11 @@
         }, function() {
           return $(this).hide();
         });
+      } else {
+        this.max_users.animate({
+          top: this.window.height() - 80
+        });
       }
-      this.max_users.animate({
-        top: this.window.height() - 15
-      });
       if (this.title_view !== null) {
         Tween.get(this.title_view).to({
           y: -((this.window.height() / 2) + 45)
@@ -373,9 +441,11 @@
 
     App.prototype.add_game_view = function() {
       var h, oh, ow, scale, w;
-      this.pong_stage.css({
-        opacity: 0
-      });
+      if (this.player_limit) {
+        this.pong_stage.css({
+          opacity: 0
+        });
+      }
       this.stage.removeChild(this.title_view);
       this.title_view = null;
       w = this.window.width() / 5;
@@ -666,7 +736,9 @@
           if (_this.single_player_mode) {
             return _this.start_game();
           } else {
-            return _this.socket.emit('ball_pressed');
+            if (_this.player_limit === false) {
+              return _this.socket.emit('ball_pressed');
+            }
           }
         };
       })(this);

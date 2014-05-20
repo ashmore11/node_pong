@@ -70,6 +70,9 @@ class App
 	paddle_1_disabled   : false
 	paddle_2_disabled   : false
 	player_limit        : false
+	create_user         : null
+	submit              : null
+	user_input          : null
 
 	constructor: ->
 
@@ -85,6 +88,9 @@ class App
 		@player_2_score = $ '#player_2_score'
 		@high_score     = $ '#high_score'
 		@score_alert    = $ '#score_alert'
+		@create_user    = $ '#create_user'
+		@submit         = $ '#submit'
+		@user_input     = $ '#user_input'
 
 		@x_speed = 12
 		@y_speed = 10
@@ -98,71 +104,89 @@ class App
 
 			@single_player_mode = false
 
-			@handle_users()
+			@handle_animations()
+
+			@add_user()
 
 		@single_player.on 'click', =>
 
 			@single_player_mode = true
 
 			@timer = new Timer $('#timer'), 10
+
 			@hide_title_view()
 
 
-	handle_users: ->
+	handle_animations: ->
+
+		@multiplayer.animate opacity: 0,   -> $( @ ).hide()
+		@single_player.animate opacity: 0, -> $( @ ).hide()
+		@wait.animate opacity: 0,          -> $( @ ).hide()
+		@create_user.show                  -> $( @ ).animate opacity: 1
+
+		@user_input.css( color: 'rgba(255,255,255,0.2)' ).val( 'Username' )
+		@user_input.on 'focus', -> $( @ ).css( color: 'rgba(255,255,255,1)' ).val('')
+
+
+	add_user: ->
+
+		@submit.on 'click', =>
+
+			if @user_input.val() is '' or @user_input.val() is 'Username' then return
+
+			@create_user.animate opacity: 0, -> $( @ ).hide()
+
+			user = @user_input.val()
+
+			@handle_users user
+
+			@on_resize()
+
+
+		@user_input.on 'keyup', ( event ) =>
+
+			if event.keyCode is 13
+
+				if @user_input.val() is '' or @user_input.val() is 'Username' then return
+
+				@create_user.animate opacity: 0, -> $( @ ).hide()
+
+				user = @user_input.val()
+
+				@handle_users user
+
+
+	handle_users: ( user ) ->
 
 		@socket = io.connect 'http://scott.local:3700'
 
 		@socket.on 'connect', () =>
 
-			@multiplayer.animate opacity: 0, -> $( @ ).hide()
+			@socket.emit 'adduser', user
 
-			@wait.animate opacity: 1, marginTop: -95, 1000
+			@socket.on 'user_num', ( user_num, users ) =>
 
-			@socket.emit 'adduser', prompt "What's your name?"
+				if user_num > 1 then @players_ready users
 
-			@socket.on 'updateusers', ( user ) =>
+				if user_num < 2
 
-				@on_resize()
+					@pong_stage.animate opacity: 0
 
-				html = user + ' has joined the game!'
+					@player_1_score.animate opacity: 0
+					@player_2_score.animate opacity: 0
 
-				@user_div
-					.html    html
-					.fadeIn  1000
-					.delay   1000
-					.fadeOut 1000, => $( @ ).html ''
+					@wait.show          -> $( @ ).animate opacity: 1
+					@single_player.show -> $( @ ).animate opacity: 1
 
-			@socket.on 'user_disconnect', ( user ) =>
+					@reset_game()
 
-				html = user + ' has disconnected...'
+		@socket.on 'player_1_score', => @player_one_score()
+		@socket.on 'player_2_score', => @player_two_score()
+		@socket.on 'max_users',      => @too_many_users()
 
-				@disconnect_div
-					.html    html
-					.fadeIn  1000
-					.delay   1000
-					.fadeOut 1000, => $( @ ).html ''
-
-		@socket.on 'user_num', ( user_num ) =>
-
-			if user_num > 1 then @socket.emit 'players_ready'
-
-			if user_num < 2
-
-				@reset_game()
-
-				@pong_stage.animate opacity: 1
-
-				@player_1_score.animate opacity: 0
-				@player_2_score.animate opacity: 0
-
-				@single_player.show -> $( @ ).animate opacity: 1
-				@wait.show -> $( @ ).animate opacity: 1
-
-		
-		@socket.on 'start_game', ( users ) => @players_ready users
-		@socket.on 'player_1_score',       => @player_one_score()
-		@socket.on 'player_2_score',       => @player_two_score()
-		@socket.on 'max_users', ( user )   => @too_many_users user
+		@socket.on 'reset_score', =>
+			@player_1_score.find('.score').html '0'
+			@player_2_score.find('.score').html '0'
 
 		@socket.on 'assign_user', ( i ) =>
 
@@ -171,7 +195,7 @@ class App
 			if i  > 1 then @player_limit      = true else @player_limit      = false
 
 
-	too_many_users: ( user ) ->
+	too_many_users: ->
 
 		@wait.hide()
 		@max_users.show().animate opacity: 1
@@ -231,6 +255,14 @@ class App
 
 	players_ready: ( users ) ->
 
+		if users.length > 1
+			$('#wait_list').html 'Player Queue:  '
+
+		for user, i in users
+			if i is users.length - 1 then com = '' else com = ', '
+			if i > 1
+				$('#wait_list').append i - 1 + ': ' + user + com
+
 		@player_1_score.find('.user').html users[0] + ' - '
 		@player_2_score.find('.user').html ' - ' + users[1]
 
@@ -245,8 +277,8 @@ class App
 
 		if @player_limit is false
 			@max_users.animate opacity: 0, -> $( @ ).hide()
-
-		@max_users.animate top: @window.height() - 15
+		else
+			@max_users.animate top: @window.height() - 80
 		
 		if @title_view != null
 			Tween.get( @title_view ).to y: -( ( @window.height() / 2 ) + 45 ), 500
@@ -256,7 +288,7 @@ class App
 
 	add_game_view: ->
 
-		@pong_stage.css opacity: 0
+		if @player_limit then @pong_stage.css opacity: 0
 		
 		@stage.removeChild @title_view
 		@title_view = null
@@ -520,7 +552,8 @@ class App
 			if @single_player_mode
 				@start_game()
 			else
-				@socket.emit 'ball_pressed'
+				if @player_limit is false
+					@socket.emit 'ball_pressed'
 
 
 	increase_speed: ( axis ) ->
