@@ -73,6 +73,7 @@ class App
 	create_user         : null
 	submit              : null
 	user_input          : null
+	wait_list           : null
 
 	constructor: ->
 
@@ -91,6 +92,7 @@ class App
 		@create_user    = $ '#create_user'
 		@submit         = $ '#submit'
 		@user_input     = $ '#user_input'
+		@wait_list      = $ '#wait_list'
 
 		@x_speed = 12
 		@y_speed = 10
@@ -111,6 +113,8 @@ class App
 		@single_player.on 'click', =>
 
 			@single_player_mode = true
+
+			@wait_list.hide()
 
 			@timer = new Timer $('#timer'), 10
 
@@ -255,13 +259,13 @@ class App
 
 	players_ready: ( users ) ->
 
-		if users.length > 1
-			$('#wait_list').html 'Player Queue:  '
+		if users.length > 2
+			@wait_list.html 'Player Queue:  '
 
 		for user, i in users
 			if i is users.length - 1 then com = '' else com = ', '
 			if i > 1
-				$('#wait_list').append i - 1 + ': ' + user + com
+				@wait_list.append i - 1 + ': ' + user + com
 
 		@player_1_score.find('.user').html users[0] + ' - '
 		@player_2_score.find('.user').html ' - ' + users[1]

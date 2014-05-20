@@ -120,6 +120,8 @@
 
     App.prototype.user_input = null;
 
+    App.prototype.wait_list = null;
+
     function App() {
       this.player_two_score = __bind(this.player_two_score, this);
       this.player_one_score = __bind(this.player_one_score, this);
@@ -141,6 +143,7 @@
       this.create_user = $('#create_user');
       this.submit = $('#submit');
       this.user_input = $('#user_input');
+      this.wait_list = $('#wait_list');
       this.x_speed = 12;
       this.y_speed = 10;
       this.window.on('touchmove', function(event) {
@@ -158,6 +161,7 @@
       this.single_player.on('click', (function(_this) {
         return function() {
           _this.single_player_mode = true;
+          _this.wait_list.hide();
           _this.timer = new Timer($('#timer'), 10);
           return _this.hide_title_view();
         };
@@ -377,8 +381,8 @@
 
     App.prototype.players_ready = function(users) {
       var com, i, user, _i, _len;
-      if (users.length > 1) {
-        $('#wait_list').html('Player Queue:  ');
+      if (users.length > 2) {
+        this.wait_list.html('Player Queue:  ');
       }
       for (i = _i = 0, _len = users.length; _i < _len; i = ++_i) {
         user = users[i];
@@ -388,7 +392,7 @@
           com = ', ';
         }
         if (i > 1) {
-          $('#wait_list').append(i - 1 + ': ' + user + com);
+          this.wait_list.append(i - 1 + ': ' + user + com);
         }
       }
       this.player_1_score.find('.user').html(users[0] + ' - ');
