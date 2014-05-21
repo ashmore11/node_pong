@@ -122,6 +122,12 @@
 
     App.prototype.wait_list = null;
 
+    App.prototype.coords_assigned = false;
+
+    App.prototype.game_live = false;
+
+    App.prototype.win_screen_active = false;
+
     function App() {
       this.player_two_score = __bind(this.player_two_score, this);
       this.player_one_score = __bind(this.player_one_score, this);
@@ -151,6 +157,13 @@
       });
       this.window.on('resize', this.on_resize());
       this.create_stage();
+      this.user_input.on('blur', (function(_this) {
+        return function() {
+          return $('body').animate({
+            scrollTop: 0
+          }, 250);
+        };
+      })(this));
       this.multiplayer.on('click', (function(_this) {
         return function() {
           _this.single_player_mode = false;
@@ -162,7 +175,7 @@
         return function() {
           _this.single_player_mode = true;
           _this.wait_list.hide();
-          _this.timer = new Timer($('#timer'), 10);
+          _this.timer = new Timer($('#timer'), 50);
           return _this.hide_title_view();
         };
       })(this));
@@ -191,7 +204,7 @@
       });
       this.user_input.css({
         color: 'rgba(255,255,255,0.2)'
-      }).val('Username');
+      }).val('Nickname');
       return this.user_input.on('focus', function() {
         return $(this).css({
           color: 'rgba(255,255,255,1)'
@@ -270,13 +283,13 @@
         };
       })(this));
       this.socket.on('player_1_score', (function(_this) {
-        return function() {
-          return _this.player_one_score();
+        return function(score_1, score_2) {
+          return _this.player_one_score(score_1, score_2);
         };
       })(this));
       this.socket.on('player_2_score', (function(_this) {
-        return function() {
-          return _this.player_two_score();
+        return function(score_1, score_2) {
+          return _this.player_two_score(score_1, score_2);
         };
       })(this));
       this.socket.on('max_users', (function(_this) {
@@ -383,6 +396,8 @@
       var com, i, user, _i, _len;
       if (users.length > 2) {
         this.wait_list.html('Player Queue:  ');
+      } else {
+        this.wait_list.html('');
       }
       for (i = _i = 0, _len = users.length; _i < _len; i = ++_i) {
         user = users[i];
@@ -460,13 +475,17 @@
       player_1.scaleX = scale;
       player_1.scaleY = scale;
       player_1.x = 0;
-      player_1.y = this.window.height() / 2;
       player_1.regY = player_1.image.height / 2;
+      if (this.coords_assigned === false) {
+        player_1.y = this.window.height() / 2;
+      }
       player_2.scaleX = scale;
       player_2.scaleY = scale;
       player_2.x = this.window.width() - (player_2.image.width * scale);
-      player_2.y = this.window.height() / 2;
       player_2.regY = player_2.image.height / 2;
+      if (this.coords_assigned === false) {
+        player_2.y = this.window.height() / 2;
+      }
       w = this.window.width() / 10;
       h = this.window.height() / 10;
       ow = 245;
@@ -499,20 +518,27 @@
       if (this.single_player_mode === false) {
         this.move_paddles();
       }
+      if (this.player_limit) {
+        this.start_game();
+      }
+      this.coords_assigned = true;
       this.paddle_events();
       return this.trigger_game();
     };
 
     App.prototype.trigger_game = function() {
-      ball.onPress = (function(_this) {
+      this.pong_stage.on('click touchstart', (function(_this) {
         return function() {
-          if (_this.single_player_mode) {
-            return _this.start_game();
-          } else {
-            return _this.socket.emit('ball_pressed');
+          if (_this.game_live === false && _this.win_screen_active === false) {
+            if (_this.single_player_mode) {
+              _this.start_game();
+            } else {
+              _this.socket.emit('ball_pressed');
+            }
+            return _this.game_live = true;
           }
         };
-      })(this);
+      })(this));
       if (this.single_player_mode === false) {
         return this.socket.on('game_started', (function(_this) {
           return function() {
@@ -645,63 +671,79 @@
       });
     };
 
-    App.prototype.player_one_score = function() {
+    App.prototype.player_one_score = function(score_1, score_2) {
+      this.game_live = false;
       Tween.removeTweens(ball);
       Tween.get(ball).to({
         rotation: 0
       }, 1);
-      this.player_1_score.find('.score').html(parseInt(this.player_1_score.find('.score').html()) + 1);
+      this.player_1_score.find('.score').html(score_1);
+      this.player_2_score.find('.score').html(score_2);
       ball.x = this.window.width() / 2;
       ball.y = this.window.height() / 2;
-      ball.regX = ball.image.width / 2;
-      ball.regY = ball.image.height / 2;
-      if (this.player_1_score.find('.score').html() === '3') {
-        player_1_win.x = (this.window.width() / 2) - 100;
-        player_1_win.y = this.window.height() / 2;
-        this.stage.addChild(player_1_win);
-        Tween.get(player_1_win).to({
-          y: (this.window.height() / 2) - 45
-        }, 500);
-        return this.reset_game();
-      }
-    };
-
-    App.prototype.player_two_score = function() {
-      Tween.removeTweens(ball);
-      Tween.get(ball).to({
-        rotation: 0
-      }, 1);
-      ball.x = this.window.width() / 2;
-      ball.y = this.window.height() / 2;
-      if (this.single_player_mode) {
-        clearInterval(this.single_player_timer);
-        this.single_player_timer = null;
-        this.single_player_score($('#timer').html());
-        this.timer.stop();
-        return this.timer.reset();
-      } else {
-        this.player_2_score.find('.score').html(parseInt(this.player_2_score.find('.score').html()) + 1);
-        if (this.player_2_score.find('.score').html() === '3') {
-          player_2_win.x = (this.window.width() / 2) - 100;
-          player_2_win.y = this.window.height() / 2;
-          this.stage.addChild(player_2_win);
-          Tween.get(player_2_win).to({
-            y: (this.window.height() / 2) - 45
+      return this.socket.on('player_1_win', (function(_this) {
+        return function() {
+          _this.win_screen_active = true;
+          player_1_win.x = (_this.window.width() / 2) - 100;
+          player_1_win.y = _this.window.height() / 2;
+          _this.stage.addChild(player_1_win);
+          Tween.get(player_1_win).to({
+            y: (_this.window.height() / 2) - 45
           }, 500);
-          return this.reset_game();
-        }
-      }
+          return _this.reset_game();
+        };
+      })(this));
     };
 
-    App.prototype.single_player_score = function(score) {
-      var html;
+    App.prototype.player_two_score = function(score_1, score_2) {
+      this.game_live = false;
+      Tween.removeTweens(ball);
+      Tween.get(ball).to({
+        rotation: 0
+      }, 1);
+      this.player_1_score.find('.score').html(score_1);
+      this.player_2_score.find('.score').html(score_2);
+      ball.x = this.window.width() / 2;
+      ball.y = this.window.height() / 2;
+      return this.socket.on('player_2_win', (function(_this) {
+        return function() {
+          _this.win_screen_active = true;
+          player_2_win.x = (_this.window.width() / 2) - 100;
+          player_2_win.y = _this.window.height() / 2;
+          _this.stage.addChild(player_2_win);
+          Tween.get(player_2_win).to({
+            y: (_this.window.height() / 2) - 45
+          }, 500);
+          return _this.reset_game();
+        };
+      })(this));
+    };
+
+    App.prototype.single_player_score = function() {
+      this.game_live = false;
+      this.update_score($('#timer').html());
+      clearInterval(this.single_player_timer);
+      this.single_player_timer = null;
+      this.timer.stop();
+      this.timer.reset();
+      Tween.removeTweens(ball);
+      Tween.get(ball).to({
+        rotation: 0
+      }, 1);
+      ball.x = this.window.width() / 2;
+      return ball.y = this.window.height() / 2;
+    };
+
+    App.prototype.update_score = function(score) {
+      var html, new_score;
       if (score > this.score) {
-        this.high_score.html('HIGH SCORE: ' + score + ' SECONDS');
+        new_score = 'HIGH SCORE: ' + score + ' SECONDS';
         html = 'NEW HIGH SCORE!';
       } else {
-        this.high_score.html('HIGH SCORE: ' + this.score + ' SECONDS');
+        new_score = 'HIGH SCORE: ' + this.score + ' SECONDS';
         html = 'YOU SUCK!';
       }
+      this.high_score.html(new_score);
       this.score_alert.html(html).fadeIn(1000).delay(2500).fadeOut(1000, (function(_this) {
         return function() {
           return $(_this).html('');
@@ -711,41 +753,37 @@
     };
 
     App.prototype.reset_game = function() {
-      if (this.single_player_mode === false) {
-        this.player_1_score.find('.score').html('0');
-        this.player_2_score.find('.score').html('0');
-        player_1_win.onPress = (function(_this) {
-          return function() {
-            return _this.socket.emit('remove_win');
-          };
-        })(this);
-        this.socket.on('remove', function() {
-          return Tween.get(player_1_win).to({
-            y: -115
-          }, 300);
-        });
-        player_2_win.onPress = (function(_this) {
-          return function() {
-            return _this.socket.emit('remove_win');
-          };
-        })(this);
-        this.socket.on('remove', function() {
-          return Tween.get(player_2_win).to({
-            y: -115
-          }, 300);
-        });
-      }
-      return ball.onPress = (function(_this) {
+      this.game_live = false;
+      player_1_win.onPress = (function(_this) {
         return function() {
-          if (_this.single_player_mode) {
-            return _this.start_game();
-          } else {
-            if (_this.player_limit === false) {
-              return _this.socket.emit('ball_pressed');
-            }
-          }
+          return _this.socket.emit('remove_win');
         };
       })(this);
+      this.socket.on('remove', (function(_this) {
+        return function() {
+          Tween.get(player_1_win).to({
+            y: -115
+          }, 300);
+          return _this.delay(1000, function() {
+            return _this.win_screen_active = false;
+          });
+        };
+      })(this));
+      player_2_win.onPress = (function(_this) {
+        return function() {
+          return _this.socket.emit('remove_win');
+        };
+      })(this);
+      return this.socket.on('remove', (function(_this) {
+        return function() {
+          Tween.get(player_2_win).to({
+            y: -115
+          }, 300);
+          return _this.delay(1000, function() {
+            return _this.win_screen_active = false;
+          });
+        };
+      })(this));
     };
 
     App.prototype.increase_speed = function(axis) {
@@ -816,7 +854,7 @@
           this.y_speed = -10;
         }
         this.x_speed = 12;
-        return this.player_two_score();
+        return this.single_player_score();
       }
     };
 

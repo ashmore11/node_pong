@@ -31,16 +31,17 @@ timer    = null
 users    = []
 sockets  = []
 
+player_1_score = 0
+player_2_score = 0
+
 io.sockets.on 'connection', ( socket ) =>
 
 	socket.on 'adduser', ( user ) ->
 
 		sockets.push socket.id
 
-		i = 0
-		while i < sockets.length
-			io.sockets.socket( sockets[i] ).emit 'assign_user', i
-			i++
+		for id, i in sockets
+			io.sockets.socket( id ).emit 'assign_user', i
 
 		socket.set 'username', user, ->
 
@@ -58,17 +59,18 @@ io.sockets.on 'connection', ( socket ) =>
 		socket.get 'username', ( err, user ) ->
 
 			i = users.indexOf user
-			if i > -1 then users.splice i, 1
-
-			if i is 0 or i is 1 then io.sockets.emit 'reset_score'
-
 			j = sockets.indexOf socket.id
+
+			if i > -1 then users.splice i, 1
 			if j > -1 then sockets.splice j, 1
 
-			i = 0
-			while i < sockets.length
-				io.sockets.socket( sockets[i] ).emit 'assign_user', i
-				i++
+			if i is 0 or i is 1
+				 player_1_score = 0
+				 player_2_score = 0
+				 io.sockets.emit 'reset_score'
+
+			for id, i in sockets
+				io.sockets.socket( id ).emit 'assign_user', i
 
 			user_num -= 1
 
@@ -101,11 +103,6 @@ io.sockets.on 'connection', ( socket ) =>
 		player_2.y = percent
 
 		io.sockets.emit 'paddle_2', percent
-
-
-	socket.on 'single_player_mode', ( y ) ->
-
-		player_2.y = y
 
 
 start_game = ->
@@ -165,13 +162,31 @@ update = ->
 		io.sockets.emit 'paddle_hit'
 
 	if ball.x > 99
-		if x_speed < 0 then x_speed = 1 else x_speed = -1
-		if y_speed < 0 then y_speed = 1.2 else y_speed = -1.2
-		io.sockets.emit 'player_1_score'
 		reset()
+		
+		if x_speed < 0 then x_speed = 1   else x_speed = -1
+		if y_speed < 0 then y_speed = 1.2 else y_speed = -1.2
+
+		player_1_score += 1
+
+		if player_1_score is 3
+			player_1_score = 0
+			player_2_score = 0
+			io.sockets.emit 'player_1_win'
+
+		io.sockets.emit 'player_1_score', player_1_score, player_2_score
 
 	if ball.x < 1
-		if x_speed < 0 then x_speed = 1 else x_speed = -1
-		if y_speed < 0 then y_speed = 1.2 else y_speed = -1.2
-		io.sockets.emit 'player_2_score'
 		reset()
+		
+		if x_speed < 0 then x_speed = 1   else x_speed = -1
+		if y_speed < 0 then y_speed = 1.2 else y_speed = -1.2
+
+		player_2_score += 1
+
+		if player_2_score is 3
+			player_1_score = 0
+			player_2_score = 0
+			io.sockets.emit 'player_2_win'
+
+		io.sockets.emit 'player_2_score', player_1_score, player_2_score

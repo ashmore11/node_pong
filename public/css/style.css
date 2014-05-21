@@ -10,9 +10,9 @@
 
 #PongStage {
 	position : absolute;
-	z-index  : 1;
 	width    : 100%;
 	height   : 100%;
+	z-index  : 1;
 }
 
 #container {
@@ -29,9 +29,9 @@
 	height      : 90px;
 	margin-left : -141px;
 	margin-top  : -95px;
-	z-index     : 5;
 	display     : none;
 	opacity     : 0;
+	z-index     : 5;
 }
 
 #user_input {
@@ -61,8 +61,8 @@
 	text-align  : center;
 	font-size   : 16px;
 	color       : #FFF;
-	z-index     : 2;
 	display     : none;
+	z-index     : 2;
 }
 
 #wait_list {
@@ -92,45 +92,43 @@
 	height      : 90px;
 	margin-left : -141px;
 	cursor      : pointer;
-	z-index     : 4;
 	opacity     : 0;
+	z-index     : 4;
 }
 
 #multiplayer, #wait, #max_users {
-	z-index : 3;
-	top     : 50%;
-	margin-top: -95px;
+	top        : 50%;
+	margin-top : -95px;
+	z-index    : 3;
 }
 
-#max_users {
-	margin-top: -45px;
-}
+#max_users { margin-top: -45px; }
 
 #wait {
-	cursor: default;
-	z-index: 2;
+	cursor  : default;
+	z-index : 2;
 }
 
 #max_users {
-	cursor: default;
-	z-index: 1;
+	cursor  : default;
+	z-index : 1;
 }
 
 #player_1_score, #player_2_score {
-	position: absolute;
-	top: 10px;
-	font-size   : 16px;
-	text-align: left;
-	color: white;
-	display: inline-block;
-	width: 300px;
-	opacity: 0;
+	position   : absolute;
+	top        : 10px;
+	font-size  : 16px;
+	text-align : left;
+	color      : white;
+	display    : inline-block;
+	width      : 300px;
+	opacity    : 0;
 }
 
-.user, .score         { display: inline-block; }
-#player_1_score       { text-align: right; }
-#player_1_score .user { margin-right: 5px; }
-#player_2_score .user { margin-left: 5px; }
+.user, .score         { display      : inline-block; }
+#player_1_score       { text-align   : right;        }
+#player_1_score .user { margin-right : 5px;          }
+#player_2_score .user { margin-left  : 5px;          }
 
 #timer, #score_alert, #high_score {
 	position    : absolute;

@@ -74,6 +74,9 @@ class App
 	submit              : null
 	user_input          : null
 	wait_list           : null
+	coords_assigned     : false
+	game_live           : false
+	win_screen_active   : false
 
 	constructor: ->
 
@@ -102,6 +105,8 @@ class App
 
 		@create_stage()
 
+		@user_input.on 'blur', () => $( 'body' ).animate scrollTop: 0, 250
+
 		@multiplayer.on 'click', =>
 
 			@single_player_mode = false
@@ -116,7 +121,7 @@ class App
 
 			@wait_list.hide()
 
-			@timer = new Timer $('#timer'), 10
+			@timer = new Timer $('#timer'), 50
 
 			@hide_title_view()
 
@@ -128,7 +133,7 @@ class App
 		@wait.animate opacity: 0,          -> $( @ ).hide()
 		@create_user.show                  -> $( @ ).animate opacity: 1
 
-		@user_input.css( color: 'rgba(255,255,255,0.2)' ).val( 'Username' )
+		@user_input.css( color: 'rgba(255,255,255,0.2)' ).val( 'Nickname' )
 		@user_input.on 'focus', -> $( @ ).css( color: 'rgba(255,255,255,1)' ).val('')
 
 
@@ -184,8 +189,8 @@ class App
 
 					@reset_game()
 
-		@socket.on 'player_1_score', => @player_one_score()
-		@socket.on 'player_2_score', => @player_two_score()
+		@socket.on 'player_1_score', ( score_1, score_2 ) => @player_one_score( score_1, score_2 )
+		@socket.on 'player_2_score', ( score_1, score_2 ) => @player_two_score( score_1, score_2 )
 		@socket.on 'max_users',      => @too_many_users()
 
 		@socket.on 'reset_score', =>
@@ -261,6 +266,8 @@ class App
 
 		if users.length > 2
 			@wait_list.html 'Player Queue:  '
+		else
+			@wait_list.html ''
 
 		for user, i in users
 			if i is users.length - 1 then com = '' else com = ', '
@@ -306,14 +313,18 @@ class App
 		player_1.scaleX = scale
 		player_1.scaleY = scale
 		player_1.x      = 0
-		player_1.y      = @window.height() / 2
 		player_1.regY   = player_1.image.height / 2
+
+		if @coords_assigned is false
+			player_1.y = @window.height() / 2
 
 		player_2.scaleX = scale
 		player_2.scaleY = scale
 		player_2.x      = @window.width() - ( player_2.image.width * scale )
-		player_2.y      = @window.height() / 2
 		player_2.regY   = player_2.image.height / 2
+
+		if @coords_assigned is false
+			player_2.y = @window.height() / 2
 
 		w     = @window.width()  / 10
 		h     = @window.height() / 10
@@ -340,8 +351,11 @@ class App
 
 		@pong_stage.animate opacity: 1, 500
 
-		if @single_player_mode is false
-			@move_paddles()
+		if @single_player_mode is false then @move_paddles()
+
+		if @player_limit then @start_game()
+
+		@coords_assigned = true
 
 		@paddle_events()
 		@trigger_game()
@@ -349,8 +363,10 @@ class App
 
 	trigger_game: ->
 
-		ball.onPress = =>
-			if @single_player_mode then @start_game() else @socket.emit 'ball_pressed'
+		@pong_stage.on 'click touchstart', =>
+			if @game_live is false and @win_screen_active is false
+				if @single_player_mode then @start_game() else @socket.emit 'ball_pressed'
+				@game_live = true
 		
 		if @single_player_mode is false
 			@socket.on 'game_started', =>
@@ -458,19 +474,22 @@ class App
 			Tween.get( ball, loop: true ).to rotation: -360, 1000
 
 
-	player_one_score: =>
+	player_one_score: ( score_1, score_2 ) =>
+
+		@game_live = false
 
 		Tween.removeTweens ball
 		Tween.get( ball ).to rotation: 0, 1
 
-		@player_1_score.find('.score').html parseInt( @player_1_score.find('.score').html() ) + 1
+		@player_1_score.find('.score').html score_1
+		@player_2_score.find('.score').html score_2
 
 		ball.x    = @window.width()   / 2
 		ball.y    = @window.height()  / 2
-		ball.regX = ball.image.width  / 2
-		ball.regY = ball.image.height / 2
 
-		if @player_1_score.find('.score').html() is '3'
+		@socket.on 'player_1_win', =>
+
+			@win_screen_active = true
 
 			player_1_win.x = ( @window.width()  / 2 ) - 100
 			player_1_win.y = ( @window.height() / 2 )
@@ -481,7 +500,42 @@ class App
 			@reset_game()
 
 		
-	player_two_score: =>
+	player_two_score: ( score_1, score_2 ) =>
+
+		@game_live = false
+
+		Tween.removeTweens ball
+		Tween.get( ball ).to rotation: 0, 1
+
+		@player_1_score.find('.score').html score_1
+		@player_2_score.find('.score').html score_2
+
+		ball.x = @window.width()  / 2
+		ball.y = @window.height() / 2
+
+		@socket.on 'player_2_win', =>
+
+			@win_screen_active = true
+
+			player_2_win.x = ( @window.width()  / 2 ) - 100
+			player_2_win.y = ( @window.height() / 2 )
+
+			@stage.addChild player_2_win
+			Tween.get( player_2_win ).to y: ( @window.height() / 2 ) - 45, 500
+
+			@reset_game()
+
+
+	single_player_score: ->
+
+		@game_live = false
+
+		@update_score $('#timer').html()
+
+		clearInterval @single_player_timer
+		@single_player_timer = null
+		@timer.stop()
+		@timer.reset()
 
 		Tween.removeTweens ball
 		Tween.get( ball ).to rotation: 0, 1
@@ -489,40 +543,17 @@ class App
 		ball.x = @window.width()  / 2
 		ball.y = @window.height() / 2
 
-		if @single_player_mode
 
-			clearInterval @single_player_timer
-			@single_player_timer = null
-			@single_player_score $('#timer').html()
-			@timer.stop()
-			@timer.reset()
-
-		else
-
-			@player_2_score.find('.score').html parseInt( @player_2_score.find('.score').html() ) + 1
-
-			if @player_2_score.find('.score').html() is '3'
-
-				player_2_win.x = ( @window.width()  / 2 ) - 100
-				player_2_win.y = ( @window.height() / 2 )
-
-				@stage.addChild player_2_win
-				Tween.get( player_2_win ).to y: ( @window.height() / 2 ) - 45, 500
-
-				@reset_game()
-
-
-	single_player_score: ( score ) ->
+	update_score: ( score ) ->
 
 		if score > @score
-			@high_score.html 'HIGH SCORE: ' + score + ' SECONDS'
-
-			html = 'NEW HIGH SCORE!'
-
+			new_score = 'HIGH SCORE: ' + score + ' SECONDS'
+			html      = 'NEW HIGH SCORE!'
 		else
-			@high_score.html 'HIGH SCORE: ' + @score + ' SECONDS'
+			new_score = 'HIGH SCORE: ' + @score + ' SECONDS'
+			html      = 'YOU SUCK!'
 
-			html = 'YOU SUCK!'
+		@high_score.html new_score
 
 		@score_alert
 			.html    html
@@ -535,29 +566,21 @@ class App
 
 	reset_game: ->
 
-		if @single_player_mode is false
+		@game_live = false
 
-			@player_1_score.find('.score').html '0'
-			@player_2_score.find('.score').html '0'
+		player_1_win.onPress = =>
+			@socket.emit 'remove_win'
+		
+		@socket.on 'remove', =>
+			Tween.get( player_1_win ).to y: -115, 300
+			@delay 1000, => @win_screen_active = false
 
-			player_1_win.onPress = =>
-				@socket.emit 'remove_win'
-			
-			@socket.on 'remove', ->
-				Tween.get( player_1_win ).to y: -115, 300
-
-			player_2_win.onPress = =>
-				@socket.emit 'remove_win'
-			
-			@socket.on 'remove', ->
-				Tween.get( player_2_win ).to y: -115, 300
-
-		ball.onPress = =>
-			if @single_player_mode
-				@start_game()
-			else
-				if @player_limit is false
-					@socket.emit 'ball_pressed'
+		player_2_win.onPress = =>
+			@socket.emit 'remove_win'
+		
+		@socket.on 'remove', =>
+			Tween.get( player_2_win ).to y: -115, 300
+			@delay 1000, => @win_screen_active = false
 
 
 	increase_speed: ( axis ) ->
@@ -615,7 +638,7 @@ class App
 		if ball.x < player_width
 			if @y_speed < 0 then @y_speed = 10 else @y_speed = -10
 			@x_speed = 12
-			@player_two_score()
+			@single_player_score()
 
 
 	delay: ( time, fn, args ) ->
